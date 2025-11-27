@@ -1,5 +1,3 @@
-BloomMood Use Case 文件
-
 UC-01: 使用者註冊
 項目內容 Use Case IDUC-01Use Case Name 使用者註冊 Actor 訪客 Description 訪客建立新帳號以使用 BloomMood 服務 Trigger 訪客點擊「註冊」按鈕 Precondition1. 訪客尚未登入 2. 訪客有有效的 Email 或社群帳號 Postcondition1. 建立新使用者帳號 2. 自動登入系統 3. 導向主頁面
 Main Flow:
