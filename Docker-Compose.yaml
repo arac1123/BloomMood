@@ -1,0 +1,60 @@
+services:
+  frontend:
+    build:
+      context: ./src/frontend/bloommood
+      dockerfile: Dockerfile
+    container_name: bloommood_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - VITE_API_BASE_URL=http://localhost:3001
+    volumes:
+      - ./src/frontend/bloommood:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - bloommood_net
+
+  backend:
+    build:
+      context: ./src/backend/bloommood
+      dockerfile: Dockerfile
+    container_name: bloommood_backend
+    ports:
+      - "3001:3001"
+    environment:
+      - SERVER_PORT=3001
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/bloommood
+      - SPRING_DATASOURCE_USERNAME=bloommood
+      - SPRING_DATASOURCE_PASSWORD=bloommood
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    volumes:
+      - ./src/backend/bloommood:/app
+      - /root/.m2:/root/.m2
+    depends_on:
+      - db
+    networks:
+      - bloommood_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: bloommood_postgres
+    environment:
+      - POSTGRES_DB=bloommood
+      - POSTGRES_USER=bloommood
+      - POSTGRES_PASSWORD=bloommood
+    ports:
+      - "6000:5432"
+    volumes:
+      - bloommood_pgdata:/var/lib/postgresql/data
+    networks:
+      - bloommood_net
+
+networks:
+  bloommood_net:
+
+volumes:
+  bloommood_pgdata:
