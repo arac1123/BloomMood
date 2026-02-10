@@ -1,18 +1,23 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted, ref } from "vue";
+
+const msg = ref("loading...");
+onMounted(async () => {
+  try {
+    const res = await fetch("http://localhost:3001/api/health"); // ✅ 建議走 proxy
+    const data = await res.json();
+    msg.value = JSON.stringify(data);
+  } catch (e) {
+    msg.value = String(e);
+    console.error(e);
+  }
+});
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite123123 + Vue" />
+  <div>{{ msg }}</div>
 </template>
+
 
 <style scoped>
 .logo {
