@@ -1,13 +1,13 @@
-package com.bloodmood.web;
+package com.bloodmood;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class BloodmoodApplication {
+public class BloommoodApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(BloodmoodApplication.class, args);
+		SpringApplication.run(BloommoodApplication.class, args);
 	}
 
 }
