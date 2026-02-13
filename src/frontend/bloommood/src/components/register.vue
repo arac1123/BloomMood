@@ -20,40 +20,40 @@
 
         <form class="form" @submit.prevent="handleRegister">
           <div class="input-group">
-            <input 
-              v-model.trim="formData.email" 
-              type="email" 
-              placeholder="電子郵件" 
-              required 
+            <input
+              v-model.trim="formData.email"
+              type="email"
+              placeholder="電子郵件"
+              required
             />
           </div>
-          
+
           <div class="input-group">
-            <input 
-              v-model.trim="formData.username" 
-              type="text" 
-              placeholder="使用者名稱" 
-              required 
+            <input
+              v-model.trim="formData.username"
+              type="text"
+              placeholder="使用者名稱"
+              required
               minlength="3"
             />
           </div>
 
           <div class="input-group">
-            <input 
-              v-model="formData.password" 
-              type="password" 
-              placeholder="密碼 (至少 8 碼)" 
-              required 
+            <input
+              v-model="formData.password"
+              type="password"
+              placeholder="密碼 (至少 8 碼)"
+              required
               minlength="8"
             />
           </div>
 
           <div class="input-group">
-            <input 
-              v-model="formData.confirmPassword" 
-              type="password" 
-              placeholder="確認密碼" 
-              required 
+            <input
+              v-model="formData.confirmPassword"
+              type="password"
+              placeholder="確認密碼"
+              required
             />
           </div>
 
@@ -62,9 +62,9 @@
             <span>我同意服務條款與隱私政策</span>
           </label>
 
-          <button 
-            type="submit" 
-            class="btn" 
+          <button
+            type="submit"
+            class="btn"
             :class="{ 'btn-loading': isLoading }"
             :disabled="isLoading"
           >
@@ -109,12 +109,12 @@ const handleRegister = async () => {
   try {
     // 模擬 API 請求
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     alert("✨ 註冊成功！您的療癒花園已開張，請再次登入。");
-    
+
     // 成功後跳轉回登入頁面 (對應下方 router-link 的路徑)
-    router.push('/'); 
-    
+    router.push('/');
+
   } catch (error) {
     alert("⚠️ 系統繁忙，請稍後再試。");
   } finally {

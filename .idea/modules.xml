@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/BloomMood.iml" filepath="$PROJECT_DIR$/.idea/BloomMood.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/backend/bloommood/bloommood.iml" filepath="$PROJECT_DIR$/src/backend/bloommood/bloommood.iml" />
     </modules>
   </component>
 </project>

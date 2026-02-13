@@ -1,4 +1,4 @@
-package com.bloodmood;
+package com.bloommood;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
