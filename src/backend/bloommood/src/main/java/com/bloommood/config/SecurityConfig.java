@@ -35,6 +35,9 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String corsAllowedOrigins;
 
+    @Value("${app.jwt.cookie.name:accessToken}")
+    private String jwtCookieName;
+
     @Bean
     public JwtUtil jwtUtil() {
         return new JwtUtil(jwtSecret, jwtExpirationMs);
@@ -42,7 +45,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil) {
-        return new JwtAuthFilter(jwtUtil);
+        return new JwtAuthFilter(jwtUtil, jwtCookieName);
     }
 
     @Bean
@@ -75,7 +78,7 @@ public class SecurityConfig {
                 .build();
     }
 
-    // ✅ CORS：保留你現在設定（JWT 用 Authorization header，不用 cookie）
+    // ✅ CORS：cookie-based JWT needs credentials
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -87,10 +90,11 @@ public class SecurityConfig {
         );
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // ✅ 建議不要用 "*"（有時候會踩坑），直接列出需要的
+        // Allow Content-Type + Authorization (kept for backward compatibility)
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
-        config.setAllowCredentials(false);
+        // ✅ must be true for cookies
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -94,9 +94,9 @@ const handleLogin = async () => {
   try {
     // 模擬 API 驗證延遲
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     alert("✨ 登入成功！準備進入花園。");
-    router.push('/home'); 
+    router.push('/home');
   } catch (error) {
     alert("⚠️ 登入失敗，請檢查您的帳號密碼");
   } finally {

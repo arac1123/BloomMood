@@ -18,10 +18,13 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final String jwtCookieName;
 
-    public JwtAuthFilter(JwtUtil jwtUtil) {
+    public JwtAuthFilter(JwtUtil jwtUtil, String jwtCookieName) {
         this.jwtUtil = jwtUtil;
+        this.jwtCookieName = (jwtCookieName == null || jwtCookieName.isBlank()) ? "accessToken" : jwtCookieName;
     }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
@@ -30,41 +33,45 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String auth = request.getHeader("Authorization");
+        // 1) Prefer cookie (HttpOnly)
+        String token = AuthCookieUtil.readJwtFromCookie(request, jwtCookieName);
 
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response); // ✅ 沒 token 就放行
+        // 2) Fallback to Authorization header for backwards compatibility / debugging
+        if (token == null || token.isBlank()) {
+            String auth = request.getHeader("Authorization");
+            if (auth != null && auth.startsWith("Bearer ")) {
+                token = auth.substring(7);
+            }
+        }
+
+        if (token == null || token.isBlank()) {
+            filterChain.doFilter(request, response);
             return;
         }
-        if (auth != null && auth.startsWith("Bearer ")) {
-            String token = auth.substring(7);
 
-            try {
-                Claims claims = jwtUtil.parseClaims(token);
-                String uid = claims.getSubject();
-                String role = claims.get("role", String.class);
+        try {
+            Claims claims = jwtUtil.parseClaims(token);
+            String uid = claims.getSubject();
+            String role = claims.get("role", String.class);
 
-                var authToken = new UsernamePasswordAuthenticationToken(
-                        uid,
-                        null,
-                        List.of(new SimpleGrantedAuthority(role == null ? "ROLE_USER" : role))
-                );
+            var authToken = new UsernamePasswordAuthenticationToken(
+                    uid,
+                    null,
+                    List.of(new SimpleGrantedAuthority(role == null ? "ROLE_USER" : role))
+            );
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            SecurityContextHolder.getContext().setAuthentication(authToken);
 
-            } catch (JwtException e) {
-                // token 壞掉：直接回 401
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
-                return;
-            }
+        } catch (JwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
+            return;
         }
 
         filterChain.doFilter(request, response);
