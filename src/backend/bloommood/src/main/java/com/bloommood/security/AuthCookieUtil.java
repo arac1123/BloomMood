@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public final class AuthCookieUtil {
 
     private AuthCookieUtil() {}
-
+//  設cookie，max-age是過期時間，secure是https才會傳送cookie，same-site是防止csrf攻擊
     public static void setJwtCookie(HttpServletResponse response,
                                    String cookieName,
                                    String jwt,
@@ -33,7 +33,7 @@ public final class AuthCookieUtil {
 
         response.addHeader("Set-Cookie", header);
     }
-
+// Max-age設0來直接刪掉 cookie
     public static void clearJwtCookie(HttpServletResponse response,
                                      String cookieName,
                                      boolean secure,
@@ -52,7 +52,7 @@ public final class AuthCookieUtil {
 
         response.addHeader("Set-Cookie", header);
     }
-
+// 讀cookie後面的jwt token
     public static String readJwtFromCookie(HttpServletRequest request, String cookieName) {
         if (request.getCookies() == null) {
             return null;

@@ -34,6 +34,8 @@ services:
       - APP_GOOGLE_CLIENT_ID=${APP_GOOGLE_CLIENT_ID}
       - APP_GOOGLE_CLIENT_SECRET=${APP_GOOGLE_CLIENT_SECRET}
       - APP_GOOGLE_REDIRECT_URI=${APP_GOOGLE_REDIRECT_URI}
+      - TZ=Asia/Taipei
+
     volumes:
       - ./src/backend/bloommood:/app
       - /root/.m2:/root/.m2
@@ -49,6 +51,7 @@ services:
       - POSTGRES_DB=bloommood
       - POSTGRES_USER=bloommood
       - POSTGRES_PASSWORD=bloommood
+      - TZ=Asia/Taipei
     ports:
       - "6000:5432"
     volumes:

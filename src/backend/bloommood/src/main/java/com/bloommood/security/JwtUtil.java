@@ -18,7 +18,7 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }
-
+//    生成jwt token，裡面放uid跟role，還有過期時間
     public String generateToken(String uid, String role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
@@ -31,7 +31,7 @@ public class JwtUtil {
                 .signWith(key)
                 .compact();
     }
-
+    // 解析jwt token，拿到裡面的claims（uid、role、過期時間）
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith((javax.crypto.SecretKey) key)

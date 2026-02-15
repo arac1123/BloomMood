@@ -2,12 +2,10 @@ package com.bloommood.controller;
 
 import com.bloommood.dto.UpdateRequest;
 import com.bloommood.dto.UserViewDto;
-import com.bloommood.entity.User;
-import com.bloommood.repository.UserRepository;
+import com.bloommood.service.UserService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -16,14 +14,12 @@ import java.util.Map;
 @RequestMapping("/api/me")
 public class MeController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
-    public MeController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+    public MeController(UserService userService) {
+        this.userService = userService;
     }
-
+    // 拿uid (如果没有认证信息或格式不对，返回null)，getName會對應到token第一個參數（目前是uid），所以這裡直接轉成Long
     private Long currentUid(Authentication auth) {
         if (auth == null || auth.getName() == null) return null;
         try {
@@ -38,10 +34,12 @@ public class MeController {
         Long uid = currentUid(auth);
         if (uid == null) return ResponseEntity.status(401).body(Map.of("message", "unauthorized"));
 
-        User user = userRepository.findById(uid).orElse(null);
-        if (user == null) return ResponseEntity.status(401).body(Map.of("message", "user not found"));
-
-        return ResponseEntity.ok(new UserViewDto(user.getUid(), user.getEmail(), user.getUname(), user.getRole()));
+        try {
+            UserViewDto dto = userService.getInfo(uid);
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PatchMapping
@@ -49,66 +47,13 @@ public class MeController {
         Long uid = currentUid(auth);
         if (uid == null) return ResponseEntity.status(401).body(Map.of("message", "unauthorized"));
 
-        User user = userRepository.findById(uid).orElse(null);
-        if (user == null) return ResponseEntity.status(401).body(Map.of("message", "user not found"));
-
-        boolean changed = false;
-
-        // 1) uname（有傳才改）
-        if (req.getUname() != null) {
-            String newName = req.getUname().trim();
-            if (newName.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "uname cannot be blank"));
-            }
-            user.setUname(newName);
-            changed = true;
+        try {
+            boolean changed = userService.updateMe(uid, req);
+            return ResponseEntity.ok(Map.of("ok", true, "changed", changed));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
-
-        // 2) email（有傳才改）
-        if (req.getEmail() != null) {
-            String newEmail = req.getEmail().trim().toLowerCase();
-            if (newEmail.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "email cannot be blank"));
-            }
-
-            if (!newEmail.equalsIgnoreCase(user.getEmail())) {
-                if (userRepository.existsByEmail(newEmail)) {
-                    return ResponseEntity.badRequest().body(Map.of("message", "email already exists"));
-                }
-                user.setEmail(newEmail);
-                changed = true;
-            }
-        }
-
-        // 3) password（只有 newPassword 有傳才處理）
-        if (req.getNewPassword() != null) {
-            String newPw = req.getNewPassword();
-            if (newPw.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "newPassword cannot be blank"));
-            }
-            // 必須提供 oldPassword
-            if (req.getOldPassword() == null || req.getOldPassword().isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "oldPassword required to change password"));
-            }
-            if (!passwordEncoder.matches(req.getOldPassword(), user.getPassword())) {
-                return ResponseEntity.status(401).body(Map.of("message", "invalid old password"));
-            }
-
-            user.setPassword(passwordEncoder.encode(newPw));
-            changed = true;
-        } else {
-            // 你如果想防呆：有人只傳 oldPassword 沒傳 newPassword，就直接忽略 or 報錯
-            // 我建議報錯比較清楚：
-            if (req.getOldPassword() != null && !req.getOldPassword().isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "newPassword required when oldPassword is provided"));
-            }
-        }
-
-        if (!changed) {
-            return ResponseEntity.ok(Map.of("ok", true, "changed", false));
-        }
-
-        userRepository.save(user);
-        return ResponseEntity.ok(Map.of("ok", true, "changed", true));
     }
 }

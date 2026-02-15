@@ -98,6 +98,13 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Needed for @DataJpaTest and other test slices -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-test-autoconfigure</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>
