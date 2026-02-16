@@ -24,7 +24,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
         this.jwtCookieName = (jwtCookieName == null || jwtCookieName.isBlank()) ? "accessToken" : jwtCookieName;
     }
-//auth跟debug不用看token
+
+    // auth 跟 debug 不用看 token
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
@@ -40,6 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // 1) Prefer cookie (HttpOnly)
         String token = AuthCookieUtil.readJwtFromCookie(request, jwtCookieName);
+
         // 2) Fallback to Authorization header for backwards compatibility / debugging
         if (token == null || token.isBlank()) {
             String auth = request.getHeader("Authorization");
@@ -57,7 +59,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             Claims claims = jwtUtil.parseClaims(token);
             String uid = claims.getSubject();
             String role = claims.get("role", String.class);
-            // jwt裡面的3個claim
+
+            // jwt 裡面的 3 個 claim：uid / role
             var authToken = new UsernamePasswordAuthenticationToken(
                     uid,
                     null,

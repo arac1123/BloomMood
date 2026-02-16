@@ -43,7 +43,6 @@ public class PlantService {
         if (existing != null) {
             throw new IllegalArgumentException("plant already exists for today");
         }
-
         User user = userRepository.findById(uid).orElse(null);
         if (user == null) {
             throw new IllegalArgumentException("user not found");

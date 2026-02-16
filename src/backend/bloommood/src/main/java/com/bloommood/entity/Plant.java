@@ -31,11 +31,11 @@ public class Plant {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PlantType type = PlantType.FLOWER;
+    private PlantType type;
 
     public Plant() {
     }
-    // Constructor for creating a new plant with default status and stage.
+
     public Plant(User user, LocalDate plantDate, PlantType type) {
         this.user = user;
         this.plantDate = plantDate;
@@ -54,6 +54,11 @@ public class Plant {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    /** Convenience accessor; source of truth is {@link #user}. */
+    public Long getUid() {
+        return user != null ? user.getUid() : null;
     }
 
     public LocalDate getPlantDate() {

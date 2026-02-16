@@ -188,3 +188,40 @@ Request body example:
 回應：
 - 200: `{ "ok": true }`
 - 404: `{ "message": "plant not found" }`
+
+---
+
+## Action (需要登入：Cookie JWT)
+
+> 用來記錄每日行為（澆水/施肥/曬太陽）。
+> 這些是事件紀錄（log-like），後端會用它來計算「某天截止」植物狀態。
+
+- POST /api/action
+
+新增一筆 action
+
+Request body:
+```json
+{ "type": "WATER" }
+```
+
+- GET /api/action/month?ym=YYYY-MM
+
+查某個月的 action 清單
+
+Example: `/api/action/month?ym=2026-02`
+
+---
+
+## Plant 狀態計算規則（重點）
+
+`GET /api/plant/month?ym=YYYY-MM` 回傳的每一天，都會包含：
+- `hasPlant`
+- `computedStatus`
+
+其中 `computedStatus` 是用「截止那一天」的最後澆水日來算：
+- >= 5 天沒澆水：DEAD
+- >= 3 天沒澆水：WITHERED
+- 否則：NORMAL
+
+所以你在 3 月查 1 月，也會回「1 月當時」的狀態，不會因為現在是 3 月就全部枯萎。
