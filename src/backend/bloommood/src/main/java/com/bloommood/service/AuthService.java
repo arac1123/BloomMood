@@ -66,9 +66,9 @@ public class AuthService {
             throw new IllegalArgumentException("invalid credentials");
         }
 
-        if (user.getAuthProvider() == AuthProvider.GOOGLE) {
-            throw new IllegalStateException("use google oauth");
-        }
+        // if (user.getAuthProvider() == AuthProvider.GOOGLE) {
+        //     throw new IllegalStateException("use google oauth");
+        // }
 
         if (user.getPassword() == null || !passwordEncoder.matches(passwordRaw, user.getPassword())) {
             throw new IllegalArgumentException("invalid credentials");

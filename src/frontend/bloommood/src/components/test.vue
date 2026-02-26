@@ -92,7 +92,7 @@ async function callMe() {
       method: "GET",
       credentials: "include",
     });
-
+    
     const text = await res.text();
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${text}`);

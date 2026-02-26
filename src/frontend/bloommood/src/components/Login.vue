@@ -10,7 +10,7 @@
     <main class="content">
       <div class="card">
         <header class="card-header">
-          <h2 class="title">歡迎回來</h2>
+          <h2 class="title">回來</h2>
           <div class="subtitle">
             <span class="breathing-emoji">🌸</span>
             繼續灌溉你的心靈花園
@@ -41,6 +41,7 @@
             class="btn" 
             :class="{ 'btn-loading': isLoading }"
             :disabled="isLoading"
+            @click="handleLogin"
           >
             <span v-if="!isLoading">登入</span>
             <span v-else>🌿 正在進入花園...</span>
@@ -90,18 +91,43 @@ const loginData = reactive({
 
 // 1. 處理一般登入
 const handleLogin = async () => {
-  isLoading.value = true;
-  try {
-    // 模擬 API 驗證延遲
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    alert("✨ 登入成功！準備進入花園。");
-    router.push('/home');
-  } catch (error) {
-    alert("⚠️ 登入失敗，請檢查您的帳號密碼");
-  } finally {
-    isLoading.value = false;
+  const { email, password  } = loginData;
+  if (!email || !password) {
+    alert("請填寫完整的電子郵件和密碼");
+    return;
   }
+ try {
+  const res = await fetch(`http://localhost:3001/api/auth/login`, {
+    method: 'POST',
+    credentials: 'include', 
+    headers: { 'Content-Type': 'application/json' },
+    // 1. 記得轉成 JSON 字串
+    body: JSON.stringify({
+      email: email,
+      password: password,
+    })
+  });
+
+  // 2. 解析後端回傳的資料
+  const data = await res.json();
+  console.log("後端回應:", data);
+  console.log("HTTP 狀態碼:", res);
+  if (!res.ok) {
+    // 這裡就能拿到後端寫在 res.status(400).json({ message: "..." }) 裡的訊息
+    console.error("登入失敗:", data.message);
+    alert(`登入失敗: ${data.message || '請檢查帳號密碼'}`);
+    return;
+  }
+
+
+  router.push('/home');
+} catch (e) {
+  // 這裡通常是網路斷線、伺服器當掉才會觸發
+  console.log("網路或系統錯誤:", e);
+  alert("連線伺服器失敗，請稍後再試。");
+}
+  
+
 };
 
 // 2. 處理 Google OAuth 登入

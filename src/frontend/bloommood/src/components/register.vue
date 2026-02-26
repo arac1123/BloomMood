@@ -85,7 +85,6 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-
 const router = useRouter();
 const isLoading = ref(false);
 
@@ -99,27 +98,24 @@ const formData = reactive({
 
 // 處理註冊邏輯
 const handleRegister = async () => {
+  console.log('註冊資料:', formData);
   if (formData.password !== formData.confirmPassword) {
-    alert("❌ 確認密碼與密碼不符，請重新輸入");
+    alert('密碼與確認密碼不一致！');
     return;
-  }
-
+  } 
   isLoading.value = true;
-
-  try {
-    // 模擬 API 請求
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    alert("✨ 註冊成功！您的療癒花園已開張，請再次登入。");
-
-    // 成功後跳轉回登入頁面 (對應下方 router-link 的路徑)
-    router.push('/');
-
-  } catch (error) {
-    alert("⚠️ 系統繁忙，請稍後再試。");
-  } finally {
-    isLoading.value = false;
-  }
+  const res = await fetch(`http://localhost:3001/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: formData.email,
+      uname: formData.username,
+      password: formData.password
+    }),
+    credentials: 'include'  
+  });
+  alert(res.ok ? '註冊成功！請登入。' : '註冊失敗，請再試一次。');
+  if (res.ok) router.push('/home');
 };
 </script>
 

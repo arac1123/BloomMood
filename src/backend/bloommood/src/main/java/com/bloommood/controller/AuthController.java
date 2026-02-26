@@ -23,6 +23,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+        System.out.println("Register request: " + req.getEmail() + ", " + req.getUname());
         if (req.getEmail() == null || req.getEmail().isBlank()
                 || req.getUname() == null || req.getUname().isBlank()
                 || req.getPassword() == null || req.getPassword().isBlank()) {
