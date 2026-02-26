@@ -293,7 +293,32 @@ const saveDailyRecord = () => {
 const staticRain = Array.from({ length: 30 }, (_, i) => ({ id: i, style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 2 + 's' } }));
 const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 1 + 's' } }));
 const quickInput = (val) => { userInput.value = val; };
-const handleLogout = () => { if (confirm("確定要離開花園嗎？")) router.push('/'); };
+
+const handleLogout = async () => {
+  if (!confirm("確定要登出嗎？")) return;
+
+  try {
+    const res = await fetch("http://localhost:3001/api/auth/logout", {
+      method: "POST",
+      credentials: "include"
+    });
+
+    if (res.ok) {
+      alert("已成功登出");
+
+      // 跳轉登入頁
+      router.push("/");
+
+    } else {
+      alert("登出失敗");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("登出發生錯誤");
+  }
+};
+
 onBeforeUnmount(() => { if (effectTimer) clearTimeout(effectTimer); });
 </script>
 
