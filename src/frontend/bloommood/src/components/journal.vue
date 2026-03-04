@@ -3,64 +3,71 @@
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
-    <header class="navbar">
-      <div class="logo">Bloommood</div>
-      <nav>
-        <span @click="router.push('/home')">今日</span>
-        <span @click="router.push('/garden')">花園</span>
-        <span class="active">日誌</span>
-        <span @click="router.push('/statistics')">情緒脈動</span>
-        <span @click="router.push('/setting')">設定</span>
-      </nav>
-      <div class="avatar" @click="handleLogout">登出</div>
-    </header>
+    <Header active-tab="journal" />
 
     <main class="content">
-      <div class="container journal-layout">
-        <aside class="timeline-sidebar">
-          <h2 class="sidebar-title">情緒足跡</h2>
-          
-          <div class="search-area">
-            <input 
-              type="date" 
-              v-model="targetDate" 
-              @change="jumpToDate"
-              class="date-picker"
-            />
-          </div>
-
-          <div class="timeline-list">
-            <div 
-              v-for="(record, index) in records" 
-              :key="record.id" 
-              :class="['timeline-item', { active: selectedIndex === index }]"
-              @click="selectedIndex = index"
-            >
-              <div class="timeline-date">{{ record.date }}</div>
-              <div class="timeline-plant">{{ record.plant }}</div>
+      <div class="container calendar-layout">
+        <section class="calendar-main">
+          <div class="calendar-header">
+            <div class="year-nav">
+              <button @click="changeYear(-1)" class="nav-btn">❮</button>
+              <span class="year-text">{{ selectedYear }} 年</span>
+              <button @click="changeYear(1)" class="nav-btn">❯</button>
             </div>
-            <div v-if="records.length === 0" class="empty-state">尚無紀錄</div>
+            <div class="month-nav">
+              <button v-for="m in 12" :key="m" 
+                :class="['m-item', { active: selectedMonth === m }]"
+                @click="selectedMonth = m">
+                {{ m }}月
+              </button>
+            </div>
           </div>
-        </aside>
 
-        <section class="detail-panel">
-          <div v-if="currentRecord" class="glass-card detail-card">
+          <div class="calendar-grid">
+            <div v-for="day in ['日', '一', '二', '三', '四', '五', '六']" :key="day" class="weekday-label">
+              {{ day }}
+            </div>
+            
+            <div v-for="empty in firstDayOffset" :key="'empty-'+empty" class="calendar-day empty"></div>
+
+            <div 
+              v-for="date in daysInMonth" 
+              :key="date" 
+              :class="['calendar-day', { 
+                'has-record': hasPlantRecord(date),
+                'selected': isSelected(date)
+              }]"
+              @click="selectDate(date)"
+            >
+              <span class="day-num">{{ date }}</span>
+              <div v-if="hasPlantRecord(date)" class="plant-icon">
+                {{ getRecordByDate(date).plant?.type || getRecordByDate(date).plant || '🌱' }}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="detail-sidebar">
+          <div v-if="currentRecord && currentRecord.hasPlant" class="glass-card detail-card">
             <div class="detail-header">
-              <div class="date-badge">{{ currentRecord.date }} 的回憶</div>
+              <div class="date-badge">{{ currentRecord.date }}</div>
               <div class="plant-display">
-                <span class="big-plant">{{ currentRecord.plant }}</span>
-                <p>當天種下的心情</p>
+                <span class="big-plant">{{ currentRecord.plant?.type || currentRecord.plant || '🌱' }}</span>
               </div>
             </div>
 
-            <div class="stats-row">
-              <div class="stat-box">💧 <span>{{ currentRecord.stats?.water || 0 }}</span> 次澆水</div>
-              <div class="stat-box">☀️ <span>{{ currentRecord.stats?.sun || 0 }}</span> 次陽光</div>
-              <div class="stat-box">✨ <span>{{ currentRecord.stats?.fertilize || 0 }}</span> 次施肥</div>
+            <div class="stats-mini">
+              <span>💧 {{ currentRecord.stats?.water || 0 }}</span>
+              <span>☀️ {{ currentRecord.stats?.sun || 0 }}</span>
+              <span>✨ {{ currentRecord.stats?.fertilize || 0 }}</span>
             </div>
 
+            <button @click="deleteCurrentDayRecord" class="delete-btn" :disabled="isDeleting">
+              {{ isDeleting ? '刪除中...' : '🗑️ 刪除當日紀錄' }}
+            </button>
+
             <div class="chat-history-view">
-              <h3>當時的對話</h3>
+              <h3>心靈對話</h3>
               <div class="chat-container">
                 <div v-for="(msg, i) in currentRecord.chatLog" :key="i" :class="['bubble', msg.type]">
                   {{ msg.text }}
@@ -68,124 +75,288 @@
               </div>
             </div>
           </div>
+          
           <div v-else class="glass-card empty-card">
             <div class="empty-content">
-              <span>📖</span>
-              <p>{{ records.length > 0 ? '請選取日期或從清單中點擊' : '尚無紀錄，去種植第一棵植物吧！' }}</p>
+              <span>🍃</span>
+              <div v-if="isSelectedToday">
+                <p>今天還沒有種下植物喔！</p>
+                <button @click="plantToday" class="plant-btn" :disabled="isLoading">
+                  {{ isLoading ? '種植中...' : '🌱 種下今天的植物' }}
+                </button>
+              </div>
+              <p v-else>點選月曆上的日期<br>查看當時的心情</p>
             </div>
           </div>
-        </section>
+        </aside>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed, watch } from 'vue';
+import Header from '../components/header.vue'; // 請確認你的路徑是否正確
 
-const router = useRouter();
+// --- 狀態管理 ---
+const API_BASE_URL = 'http://localhost:3001'; // 替換成你的後端網址
 const records = ref([]);
-const selectedIndex = ref(-1); // 預設不選取任何一項
-const targetDate = ref(''); // 綁定日期選擇器
+const selectedYear = ref(new Date().getFullYear());
+const selectedMonth = ref(new Date().getMonth() + 1);
+const selectedDateNum = ref(new Date().getDate()); // 預設選中今天
+const isLoading = ref(false); // 控制按鈕載入狀態
+const isDeleting = ref(false);
+const todayPlant = ref(null);
 
-onMounted(() => {
-  const saved = localStorage.getItem('bloom_records');
-  if (saved) {
-    // 假設儲存格式是新到舊，這裡我們將它解析出來
-    records.value = JSON.parse(saved).reverse();
-    // 預設顯示第一筆（最近的一筆）
-    if (records.value.length > 0) selectedIndex.value = 0;
-  }
-});
+// --- API 呼叫 ---
 
-const currentRecord = computed(() => records.value[selectedIndex.value] || null);
+// 1. 查今天有沒有種 (GET /api/plant/today)
+const fetchTodayPlant = async () => {
+  try {
+    const res = await fetch(`http://localhost:3001/api/plant/today`, {
+      method: "GET",
+      credentials: "include"
+    });
 
-// 跳轉到特定日期的邏輯
-const jumpToDate = () => {
-  if (!targetDate.value) return;
-  
-  // 在 records 中尋找日期符合的 index
-  // 提示：確保你的 record.date 格式與 HTML5 Date input 的 YYYY-MM-DD 一致
-  const index = records.value.findIndex(r => r.date === targetDate.value);
-  
-  if (index !== -1) {
-    selectedIndex.value = index;
-    // 小優化：自動滾動到該元素 (可選)
-  } else {
-    alert(`找不到 ${targetDate.value} 的紀錄喔！`);
+    if (!res.ok) throw new Error('取得今日資料失敗');
+
+    const data = await res.json();
+    todayPlant.value = data?.hasPlant ? data.plant : null;
+  } catch (error) {
+    console.error("今日植物 API 發生錯誤:", error);
   }
 };
 
-const handleLogout = () => { if (confirm("確定登出嗎？")) router.push('/'); };
+// 2. 建立今天的植物 (POST /api/plant/today)
+const plantToday = async () => {
+  isLoading.value = true;
+  try {
+    const res = await fetch(`http://localhost:3001/api/plant/today`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ type: "FLOWER" }) // 依據你的需求決定傳什麼 type
+    });
+
+    if (!res.ok) throw new Error('種植失敗');
+    
+    console.log("種植成功！");
+        await fetchTodayPlant();
+    await fetchMonthData();
+  } catch (error) {
+    console.error("種植 API 發生錯誤:", error);
+    alert("種植失敗，請稍後再試！");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 3. 取得當月資料 (GET /api/plant/month?ym=YYYY-MM)
+const fetchMonthData = async () => {
+  try {
+    const ym = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}`;
+    const res = await fetch(`http://localhost:3001/api/plant/month?ym=${ym}`, {
+      method: "GET",
+      credentials: "include"
+    });
+
+    if (!res.ok) throw new Error('取得資料失敗');
+    
+    // 假設後端回傳的是陣列格式，如果有包在 data 裡請改成 await res.json().then(res => res.data)
+    records.value = await res.json(); 
+  } catch (error) {
+    console.error("月曆 API 發生錯誤:", error);
+  }
+};
+
+// 4. 更新植物資料 (PATCH /api/plant/{pid})
+// body: { status: "WITHERED", stage: 2, type: "TREE" }
+const updatePlant = async (pid) => {
+  try {
+    const requestBody = {
+      status: "WITHERED",
+      stage: 2,
+      type: "TREE"
+    };
+
+    const res = await fetch(`http://localhost:3001/api/plant/${pid}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify("status=WITHERED&stage=2&type=TREE") // 根據你的 API 規格調整 body 格式
+    });
+
+    if (!res.ok) throw new Error('更新植物失敗');
+
+    const updatedPlant = await res.json();
+    await fetchMonthData();
+    return updatedPlant;
+  } catch (error) {
+    console.error("更新植物 API 發生錯誤:", error);
+    alert("更新失敗，請稍後再試！");
+    return null;
+  }
+};
+
+// 5. 刪除植物資料 (DELETE /api/plant/{pid})
+const deletePlant = async (pid) => {
+  try {
+    const res = await fetch(`http://localhost:3001/api/plant/${pid}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    if (res.status === 404) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.message || 'plant not found');
+    }
+
+    if (!res.ok) throw new Error('刪除植物失敗');
+
+    const result = await res.json();
+    await fetchMonthData();
+    return result;
+  } catch (error) {
+    console.error("刪除植物 API 發生錯誤:", error);
+    alert("刪除失敗，請稍後再試！");
+    return null;
+  }
+};
+
+const deleteCurrentDayRecord = async () => {
+  const pid = currentRecord.value?.plant?.pid;
+  if (!pid) return;
+
+  isDeleting.value = true;
+  try {
+    const ok = confirm('確定要刪除這株植物嗎？');
+    if (!ok) return;
+
+    await deletePlant(pid);
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
+// --- 生命週期與監聽 ---
+
+onMounted(() => {
+  fetchTodayPlant();
+  fetchMonthData(); // 一進畫面就抓資料
+});
+
+// 監聽年月改變，自動重新抓資料
+watch([selectedYear, selectedMonth], () => {
+  fetchMonthData();
+  selectedDateNum.value = null; // 換月時清空選取的日期
+});
+
+// --- 月曆運算邏輯 ---
+
+const firstDayOffset = computed(() => {
+  return new Date(selectedYear.value, selectedMonth.value - 1, 1).getDay();
+});
+
+const daysInMonth = computed(() => {
+  return new Date(selectedYear.value, selectedMonth.value, 0).getDate();
+});
+
+// 取得特定日期的資料物件
+const getRecordByDate = (dateNum) => {
+  const dateStr = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
+  return records.value.find(r => r.date === dateStr);
+};
+
+// 判斷該天是否有植物 (API 規格說沒種的日子也會回傳，所以要判斷 hasPlant)
+const hasPlantRecord = (dateNum) => {
+  const record = getRecordByDate(dateNum);
+  return record && record.hasPlant;
+};
+
+// 取得當前選中日期的詳細資料
+const currentRecord = computed(() => {
+  if (!selectedDateNum.value) return null;
+  return getRecordByDate(selectedDateNum.value);
+});
+
+// 判斷選中的是不是「現實世界的今天」
+const isSelectedToday = computed(() => {
+  if (!selectedDateNum.value) return false;
+  const today = new Date();
+  return selectedYear.value === today.getFullYear() && 
+         selectedMonth.value === today.getMonth() + 1 && 
+         selectedDateNum.value === today.getDate();
+});
+
+const selectDate = (date) => {
+  selectedDateNum.value = date;
+};
+
+const isSelected = (date) => selectedDateNum.value === date;
+
+const changeYear = (step) => {
+  selectedYear.value += step;
+};
 </script>
 
 <style scoped>
-/* 保持原有的樣式並新增以下部分 */
-
-.search-area {
-  margin-bottom: 20px;
-}
-
-.date-picker {
-  width: 100%;
-  padding: 10px 15px;
-  border-radius: 12px;
-  border: 1px solid rgba(93, 122, 93, 0.3);
-  background: rgba(255, 255, 255, 0.6);
-  color: #4a5d4a;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.date-picker:focus {
-  background: white;
-  border-color: #5d7a5d;
-  box-shadow: 0 0 10px rgba(93, 122, 93, 0.1);
-}
-
-/* 為了讓視覺更平衡，微調原有樣式 */
-.timeline-sidebar {
-  flex: 3;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 120px); /* 限制高度避免溢出 */
-}
-
-.sidebar-title {
-  color: #4a5d4a;
-  margin-bottom: 15px;
-  font-size: 1.2rem;
-}
-
-/* 原有樣式... (省略) */
-* { box-sizing: border-box; }
+/* 原本的 CSS 保留 */
 .page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
-.navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2); z-index: 10; }
-.logo { font-weight: 700; font-size: 22px; color: #4a5d4a; letter-spacing: 1px; }
-nav span { margin: 0 15px; color: #556b55; cursor: pointer; }
-nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5d7a5d; }
-.content { flex: 1; padding: 20px 40px; display: flex; justify-content: center; overflow: hidden; }
-.journal-layout { display: flex; gap: 30px; width: 100%; max-width: 1200px; }
-.timeline-list { flex: 1; overflow-y: auto; padding-right: 10px; }
-.timeline-item { background: rgba(255, 255, 255, 0.4); margin-bottom: 12px; padding: 15px 20px; border-radius: 16px; display: flex; justify-content: space-between; cursor: pointer; transition: 0.3s; border: 1px solid transparent; }
-.timeline-item.active { background: white; border-color: #5d7a5d; transform: translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-.detail-panel { flex: 7; height: 100%; overflow: hidden; }
-.glass-card { background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(15px); border-radius: 24px; padding: 30px; height: 100%; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.4); }
-.stats-row { display: flex; gap: 15px; margin-bottom: 30px; }
-.stat-box { flex: 1; background: rgba(255, 255, 255, 0.4); padding: 15px; border-radius: 15px; text-align: center; color: #4a5d4a; font-weight: 500; }
+.content { flex: 1; padding: 20px; display: flex; justify-content: center; overflow: hidden; }
+.calendar-layout { display: flex; gap: 20px; width: 100%; max-width: 1300px; height: 100%; }
+
+.calendar-main { flex: 7; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); border-radius: 30px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+
+.calendar-header { margin-bottom: 20px; }
+.year-nav { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+.year-text { font-size: 1.4rem; font-weight: bold; color: #4a5d4a; }
+.nav-btn { background: none; border: none; font-size: 1.2rem; color: #5d7a5d; cursor: pointer; }
+
+.month-nav { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; }
+.m-item { background: none; border: none; padding: 5px 10px; cursor: pointer; color: #889a88; border-radius: 8px; transition: 0.3s; }
+.m-item.active { background: #5d7a5d; color: white; }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; flex: 1; }
+.weekday-label { text-align: center; font-weight: bold; color: #889a88; padding: 10px 0; }
+.calendar-day { background: rgba(255, 255, 255, 0.3); border-radius: 15px; position: relative; min-height: 80px; padding: 8px; cursor: pointer; transition: 0.3s; border: 2px solid transparent; }
+.calendar-day:hover { background: rgba(255, 255, 255, 0.8); }
+.calendar-day.selected { border-color: #5d7a5d; background: white; }
+.calendar-day.empty { background: none; cursor: default; }
+
+.day-num { font-size: 0.9rem; color: #4a5d4a; }
+.plant-icon { font-size: 2rem; text-align: center; margin-top: 5px; }
+
+.detail-sidebar { flex: 3; height: 100%; }
+.detail-card { height: 100%; display: flex; flex-direction: column; padding: 25px; }
+.date-badge { background: #5d7a5d; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.85rem; display: inline-block; margin-bottom: 10px; }
+.big-plant { font-size: 3.5rem; display: block; text-align: center; }
+
+.stats-mini { display: flex; justify-content: space-around; background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; margin: 15px 0; font-size: 0.9rem; }
+
 .chat-history-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.chat-container { flex: 1; overflow-y: auto; background: rgba(255, 255, 255, 0.2); border-radius: 15px; padding: 15px; display: flex; flex-direction: column; }
-.bubble { padding: 10px 16px; border-radius: 18px; margin-bottom: 10px; max-width: 85%; font-size: 14px; line-height: 1.5; }
-.user { background: #e8f0e8; align-self: flex-end; color: #3e4d3e; }
-.system { background: white; align-self: flex-start; color: #4a5d4a; border: 1px solid rgba(0,0,0,0.05); }
+.chat-container { flex: 1; overflow-y: auto; background: rgba(255, 255, 255, 0.3); border-radius: 15px; padding: 12px; }
+.bubble { padding: 8px 12px; border-radius: 15px; margin-bottom: 8px; font-size: 0.85rem; max-width: 90%; }
+.user { background: #e8f0e8; align-self: flex-end; margin-left: auto; }
+.system { background: white; align-self: flex-start; }
+
+.empty-card { height: 100%; display: flex; justify-content: center; align-items: center; text-align: center; color: #889a88; padding: 25px; }
+.empty-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+.empty-content span { font-size: 3rem; }
+
+/* 新增：種植按鈕的樣式 */
+.plant-btn { background: #5d7a5d; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-size: 1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+.plant-btn:hover { background: #4a5d4a; transform: translateY(-2px); }
+.plant-btn:disabled { background: #a0b0a0; cursor: not-allowed; transform: none; }
+
+.delete-btn { background: #ffffff; color: #5d7a5d; border: 1px solid #dbe4db; padding: 10px 16px; border-radius: 14px; font-size: 0.9rem; cursor: pointer; transition: 0.3s; margin-bottom: 12px; }
+.delete-btn:hover { background: #f7fbf7; transform: translateY(-1px); }
+.delete-btn:disabled { background: #f1f4f1; color: #9aa99a; cursor: not-allowed; transform: none; }
+
 .deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
 .leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
 .leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
-.empty-card { justify-content: center; align-items: center; text-align: center; color: #889a88; }
-.empty-content span { font-size: 50px; display: block; margin-bottom: 10px; }
-.date-badge { background: #5d7a5d; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; display: inline-block; margin-bottom: 15px; }
-.big-plant { font-size: 4rem; display: block; margin-bottom: 5px; }
 </style>

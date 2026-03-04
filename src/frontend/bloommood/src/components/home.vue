@@ -3,17 +3,7 @@
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
-    <header class="navbar">
-      <div class="logo">Bloommood</div>
-      <nav>
-        <span class="active">今日</span>
-        <span @click="router.push('/garden')">花園</span>
-        <span @click="router.push('/journal')">日誌</span>
-        <span @click="router.push('/statistics')">情緒脈動</span>
-        <span @click="router.push('/setting')">設定</span>
-      </nav>
-      <div class="avatar" @click="handleLogout">登出</div>
-    </header>
+    <Header active-tab="home" />
 
     <main class="content">
       <div class="container home-container">
@@ -68,6 +58,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+// 1. 引入 Header 元件
+import Header from '../components/header.vue'; 
 
 const router = useRouter();
 const userName = ref('用戶');
@@ -76,11 +68,11 @@ const lastMood = ref('尚未紀錄');
 const todayDate = ref(new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }));
 
 onMounted(() => {
-  // 1. 同步名稱：從 localStorage 讀取
+  // 讀取使用者名稱
   const savedName = localStorage.getItem('user_name');
   if (savedName) userName.value = savedName;
 
-  // 2. 讀取花園數據
+  // 讀取花園數據
   const savedRecords = localStorage.getItem('bloom_records');
   if (savedRecords) {
     const records = JSON.parse(savedRecords);
@@ -91,30 +83,44 @@ onMounted(() => {
   }
 });
 
-const handleLogout = () => { if (confirm("確定登出嗎？")) router.push('/'); };
+// handleLogout 已經在 Header 元件內處理，這裡可以安全移除
 </script>
 
 <style scoped>
-/* 樣式保持與先前設計一致 */
+/* 樣式部分：已移除 Navbar 相關 CSS，僅保留頁面專屬樣式 */
 * { box-sizing: border-box; }
 .page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
-.navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2); z-index: 10; }
-.logo { font-weight: 700; font-size: 22px; color: #4a5d4a; letter-spacing: 1px; }
-nav span { margin: 0 15px; color: #556b55; cursor: pointer; }
-nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5d7a5d; }
+
 .content { flex: 1; display: flex; justify-content: center; align-items: center; padding: 0 40px; }
 .container { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 50px; }
+
 .welcome-hero { text-align: center; }
+.date-tag { color: #889988; font-size: 14px; margin-bottom: 10px; font-weight: 500; }
 .welcome-title { font-size: 42px; color: #2d3a2d; font-weight: 700; margin: 0; }
 .welcome-subtitle { font-size: 18px; color: #556b55; margin-top: 10px; }
+
 .start-btn { margin-top: 30px; background: #5d7a5d; color: white; border: none; padding: 16px 40px; border-radius: 50px; font-size: 18px; font-weight: 600; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(93, 122, 93, 0.2); }
+.start-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 25px rgba(93, 122, 93, 0.3); background: #4a634a; }
+
 .quick-overview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
-.glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.5); padding: 25px; transition: 0.3s; }
-.card-label { font-size: 14px; color: #7a8a7a; margin-bottom: 15px; }
+.glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.5); padding: 25px; transition: 0.3s; cursor: default; }
+
+.quote-card { display: flex; flex-direction: column; justify-content: center; }
+.quote-text { font-size: 16px; color: #4a5d4a; font-style: italic; line-height: 1.6; margin: 10px 0; }
+.quote-author { font-size: 12px; color: #889988; align-self: flex-end; }
+
+.card-label { font-size: 14px; color: #7a8a7a; margin-bottom: 15px; font-weight: 600; }
 .status-grid { display: flex; justify-content: space-around; margin-bottom: 15px; }
 .status-item { text-align: center; }
-.status-item .num { font-size: 28px; font-weight: 700; color: #5d7a5d; }
+.status-item .num { font-size: 28px; font-weight: 700; color: #5d7a5d; display: block; }
+.status-item .desc { font-size: 12px; color: #889988; }
 .last-mood { font-size: 13px; color: #556b55; text-align: center; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 10px; }
+
+.mini-chart-card { cursor: pointer; }
+.mini-chart-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.6); }
+.svg-wave { width: 100%; height: 60px; }
+.click-hint { font-size: 12px; color: #889988; text-align: right; margin-top: 10px; }
+
 .deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
 .leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
 .leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }

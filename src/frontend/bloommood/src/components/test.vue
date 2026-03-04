@@ -9,8 +9,8 @@
         {{ loading ? "Working..." : "Login with Google (get code)" }}
       </button>
 
-      <button @click="callMe" :disabled="loading">
-        Call /api/me/getInfo
+      <button @click="Plant" :disabled="loading">
+        Plant
       </button>
 
       <button @click="showCookies" :disabled="loading">
@@ -82,6 +82,31 @@ async function sendCodeToBackend(code) {
   }
 }
 
+async function Plant() {
+  loading.value = true;
+  error.value = "";
+  result.value = "";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/plant/today`, {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ type: "TREE" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+
+    result.value = text || "ok";
+  } catch (e) {
+    error.value = e?.message || String(e);
+  } finally {
+    loading.value = false;
+  }
+}
 async function callMe() {
   loading.value = true;
   error.value = "";

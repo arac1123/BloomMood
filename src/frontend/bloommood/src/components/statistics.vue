@@ -3,17 +3,7 @@
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
-    <header class="navbar">
-      <div class="logo">Bloommood</div>
-      <nav>
-        <span @click="router.push('/home')">今日</span>
-        <span @click="router.push('/garden')">花園</span>
-        <span @click="router.push('/journal')">日誌</span>
-        <span class="active">情緒脈動</span>
-        <span @click="router.push('/setting')">設定</span>
-      </nav>
-      <div class="avatar" @click="handleLogout" title="登出">登出</div>
-    </header>
+    <Header active-tab="statistics" />
 
     <main class="content">
       <div class="container pulse-layout">
@@ -65,7 +55,7 @@
             </div>
 
             <div class="chart-footer">
-              <span>時間軸：由遠至近</span>
+              <span>時間軸：由遠至近 (近 7 筆數據)</span>
             </div>
           </div>
         </section>
@@ -75,15 +65,15 @@
             <h2 class="card-title">心靈照顧分佈</h2>
             <div class="progress-container">
               <div class="bar-group">
-                <div class="bar-label">💧 疏導</div>
+                <div class="bar-label">💧 疏導 (澆水)</div>
                 <div class="bar-track"><div class="bar-fill water" :style="{ width: getPercentage('water') + '%' }"></div></div>
               </div>
               <div class="bar-group">
-                <div class="bar-label">☀️ 正念</div>
+                <div class="bar-label">☀️ 正念 (陽光)</div>
                 <div class="bar-track"><div class="bar-fill sun" :style="{ width: getPercentage('sun') + '%' }"></div></div>
               </div>
               <div class="bar-group">
-                <div class="bar-label">✨ 滋養</div>
+                <div class="bar-label">✨ 滋養 (施肥)</div>
                 <div class="bar-track"><div class="bar-fill talk" :style="{ width: getPercentage('fertilize') + '%' }"></div></div>
               </div>
             </div>
@@ -98,6 +88,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+// 2. 引入封裝好的 Header
+import Header from '../components/header.vue'; 
 
 const router = useRouter();
 const records = ref([]);
@@ -105,10 +97,12 @@ const records = ref([]);
 onMounted(() => {
   const saved = localStorage.getItem('bloom_records');
   if (saved) {
+    // 取得最近 7 筆紀錄做分析
     records.value = JSON.parse(saved).slice(-7);
   }
 });
 
+// 定義不同植物對應的分數，用於畫曲線圖
 const moodScores = {
   '✨': 2, '🍀': 1, '🌸': 1, '🌼': 1, '🌻': 1, '🌷': 1,
   '🌱': 0.5, '🌿': 0.5, '☁️': 0,
@@ -149,9 +143,9 @@ const fillPath = computed(() => {
 
 const statsTotal = computed(() => {
   return records.value.reduce((acc, r) => {
-    acc.water += r.stats.water || 0;
-    acc.sun += r.stats.sun || 0;
-    acc.fertilize += r.stats.fertilize || 0;
+    acc.water += r.stats?.water || 0;
+    acc.sun += r.stats?.sun || 0;
+    acc.fertilize += r.stats?.fertilize || 0;
     return acc;
   }, { water: 0, sun: 0, fertilize: 0 });
 });
@@ -168,7 +162,7 @@ const currentRhythmEmoji = computed(() => {
   return records.value[records.value.length - 1].plant;
 });
 
-const handleLogout = () => { if (confirm("確定離開花園嗎？")) router.push('/'); };
+// handleLogout 已搬移至元件內，此處移除
 </script>
 
 <style scoped>
@@ -176,13 +170,6 @@ const handleLogout = () => { if (confirm("確定離開花園嗎？")) router.pus
 
 .page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
 
-.navbar { display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); padding: 16px 40px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); z-index: 10; flex-shrink: 0; }
-
-.logo { font-weight: 700; font-size: 22px; color: #4a5d4a; letter-spacing: 1px; }
-nav span { margin: 0 15px; color: #556b55; font-weight: 500; cursor: pointer; transition: color 0.3s; }
-nav span:hover { color: #2d3a2d; }
-nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5d7a5d; }
-.avatar { cursor: pointer; color: #556b55; font-size: 14px; }
 .content { flex: 1; min-height: 0; padding: 20px 40px; }
 .container { width: 100%; max-width: 1000px; height: 100%; display: flex; flex-direction: column; gap: 20px; margin: 0 auto; }
 
@@ -194,10 +181,9 @@ nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5
 
 .card-title { font-size: 15px; color: #4a5d4a; margin: 0; font-weight: 600; }
 
-/* 脈動指示燈 */
+/* 脈動指示燈動畫 */
 .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .pulse-indicator { font-size: 12px; color: #5d7a5d; animation: blink 2s infinite; }
-
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* 概覽區域 */
@@ -209,7 +195,7 @@ nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5
 /* 圖表區域 */
 .chart-section { flex: 1; min-height: 0; }
 .chart-card { height: 100%; display: flex; flex-direction: column; }
-.chart-container { flex: 1; min-height: 0; padding: 10px 0; }
+.chart-container { flex: 1; min-height: 0; padding: 10px 0; position: relative; }
 
 .pulse-ring { animation: ring-grow 2s infinite; transform-origin: center; }
 @keyframes ring-grow { 0% { r: 4; opacity: 0.5; } 100% { r: 12; opacity: 0; } }
@@ -218,14 +204,18 @@ nav span.active { color: #2d3a2d; font-weight: bold; border-bottom: 2px solid #5
 
 /* 下方進度條 */
 .progress-container { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
+.bar-group { display: flex; flex-direction: column; }
 .bar-label { font-size: 12px; color: #556b55; margin-bottom: 4px; }
-.bar-track { height: 6px; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 10px; transition: width 1s ease; }
+.bar-track { height: 8px; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 10px; transition: width 1s cubic-bezier(0.1, 0.5, 0.5, 1); }
 
-.water { background: #90caf9; }
-.sun { background: #fff59d; }
-.talk { background: #a5d6a7; }
+.water { background: #90caf9; box-shadow: 0 0 10px rgba(144, 202, 249, 0.4); }
+.sun { background: #fff59d; box-shadow: 0 0 10px rgba(255, 245, 157, 0.4); }
+.talk { background: #a5d6a7; box-shadow: 0 0 10px rgba(165, 214, 167, 0.4); }
 
+.empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #889a88; font-size: 14px; }
+
+/* 裝飾元件 */
 .deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
 .leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
 .leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
