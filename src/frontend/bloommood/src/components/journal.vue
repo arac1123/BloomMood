@@ -187,7 +187,7 @@ const updatePlant = async (pid) => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify("status=WITHERED&stage=2&type=TREE") // 根據你的 API 規格調整 body 格式
+      body: JSON.stringify(requestBody)
     });
 
     if (!res.ok) throw new Error('更新植物失敗');
