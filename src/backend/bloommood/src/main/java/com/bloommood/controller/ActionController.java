@@ -43,6 +43,7 @@ public class ActionController {
         try {
             Action a = actionService.createAction(uid, req == null ? null : req.getType());
             return ResponseEntity.ok(toDto(a));
+            
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

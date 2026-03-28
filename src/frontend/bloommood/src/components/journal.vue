@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page page-bg-main">
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
@@ -41,7 +41,11 @@
             >
               <span class="day-num">{{ date }}</span>
               <div v-if="hasPlantRecord(date)" class="plant-icon">
-                {{ getRecordByDate(date).plant?.type || getRecordByDate(date).plant || '🌱' }}
+                <img
+                  :src="getPlantImageByDate(date)"
+                  alt="plant"
+                  class="plant-thumb"
+                />
               </div>
             </div>
           </div>
@@ -52,7 +56,11 @@
             <div class="detail-header">
               <div class="date-badge">{{ currentRecord.date }}</div>
               <div class="plant-display">
-                <span class="big-plant">{{ currentRecord.plant?.type || currentRecord.plant || '🌱' }}</span>
+                <img
+                  :src="currentRecordPlantImage"
+                  alt="plant"
+                  class="big-plant-img"
+                />
               </div>
             </div>
 
@@ -100,6 +108,16 @@ import Header from '../components/header.vue'; // 請確認你的路徑是否正
 
 // --- 狀態管理 ---
 const API_BASE_URL = 'http://localhost:3001'; // 替換成你的後端網址
+const plantImageModules = import.meta.glob('../assets/image/*.{png,jpg,jpeg,webp,svg}', {
+  eager: true,
+  import: 'default'
+});
+const plantTypeImagePrefixMap = {
+  flower: 'sunflower',
+  cactus: 'cactus',
+  tree: 'tree'
+};
+const defaultPlantImage = plantImageModules['../assets/image/sunflower_stage1.png'] || '';
 const records = ref([]);
 const selectedYear = ref(new Date().getFullYear());
 const selectedMonth = ref(new Date().getMonth() + 1);
@@ -271,6 +289,18 @@ const getRecordByDate = (dateNum) => {
   return records.value.find(r => r.date === dateStr);
 };
 
+const getPlantImagePath = (plant) => {
+  const plantType = (plant?.type || plant || 'FLOWER').toString().toLowerCase();
+  const prefix = plantTypeImagePrefixMap[plantType] || 'sunflower';
+  const fileName = `${prefix}_stage1.png`;
+  return plantImageModules[`../assets/image/${fileName}`] || defaultPlantImage;
+};
+
+const getPlantImageByDate = (dateNum) => {
+  const record = getRecordByDate(dateNum);
+  return getPlantImagePath(record?.plant);
+};
+
 // 判斷該天是否有植物 (API 規格說沒種的日子也會回傳，所以要判斷 hasPlant)
 const hasPlantRecord = (dateNum) => {
   const record = getRecordByDate(dateNum);
@@ -282,6 +312,8 @@ const currentRecord = computed(() => {
   if (!selectedDateNum.value) return null;
   return getRecordByDate(selectedDateNum.value);
 });
+
+const currentRecordPlantImage = computed(() => getPlantImagePath(currentRecord.value?.plant));
 
 // 判斷選中的是不是「現實世界的今天」
 const isSelectedToday = computed(() => {
@@ -305,7 +337,6 @@ const changeYear = (step) => {
 
 <style scoped>
 /* 原本的 CSS 保留 */
-.page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
 .content { flex: 1; padding: 20px; display: flex; justify-content: center; overflow: hidden; }
 .calendar-layout { display: flex; gap: 20px; width: 100%; max-width: 1300px; height: 100%; }
 
@@ -329,11 +360,13 @@ const changeYear = (step) => {
 
 .day-num { font-size: 0.9rem; color: #4a5d4a; }
 .plant-icon { font-size: 2rem; text-align: center; margin-top: 5px; }
+.plant-thumb { width: 38px; height: 38px; object-fit: contain; display: block; margin: 4px auto 0; }
 
 .detail-sidebar { flex: 3; height: 100%; }
 .detail-card { height: 100%; display: flex; flex-direction: column; padding: 25px; }
 .date-badge { background: #5d7a5d; color: white; padding: 5px 12px; border-radius: 12px; font-size: 0.85rem; display: inline-block; margin-bottom: 10px; }
 .big-plant { font-size: 3.5rem; display: block; text-align: center; }
+.big-plant-img { width: 100px; height: 100px; object-fit: contain; display: block; margin: 0 auto; }
 
 .stats-mini { display: flex; justify-content: space-around; background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; margin: 15px 0; font-size: 0.9rem; }
 
@@ -356,7 +389,95 @@ const changeYear = (step) => {
 .delete-btn:hover { background: #f7fbf7; transform: translateY(-1px); }
 .delete-btn:disabled { background: #f1f4f1; color: #9aa99a; cursor: not-allowed; transform: none; }
 
-.deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
-.leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
-.leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
+@media (max-width: 1100px) {
+  .calendar-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .calendar-main,
+  .detail-sidebar {
+    width: 100%;
+    flex: unset;
+  }
+
+  .detail-sidebar {
+    height: auto;
+  }
+
+  .detail-card,
+  .empty-card {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 12px;
+  }
+
+  .calendar-main {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .month-nav {
+    gap: 6px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .m-item {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .calendar-grid {
+    gap: 6px;
+  }
+
+  .calendar-day {
+    min-height: 62px;
+    padding: 6px;
+  }
+
+  .plant-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .detail-card,
+  .empty-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .year-text {
+    font-size: 1.1rem;
+  }
+
+  .weekday-label {
+    font-size: 12px;
+    padding: 6px 0;
+  }
+
+  .day-num {
+    font-size: 0.8rem;
+  }
+
+  .stats-mini {
+    font-size: 0.8rem;
+  }
+
+  .chat-container {
+    padding: 10px;
+  }
+
+  .bubble {
+    font-size: 0.8rem;
+  }
+}
+
 </style>

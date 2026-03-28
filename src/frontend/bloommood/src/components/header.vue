@@ -70,6 +70,7 @@ nav span {
   color: #556b55;
   cursor: pointer;
   transition: color 0.3s;
+  white-space: nowrap;
 }
 
 nav span:hover {
@@ -86,5 +87,52 @@ nav span.active {
   cursor: pointer;
   color: #556b55;
   font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .navbar {
+    padding: 0 16px;
+    height: auto;
+    min-height: 60px;
+    gap: 10px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  nav {
+    flex: 1;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+  }
+
+  nav span {
+    margin: 0 10px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  nav {
+    order: 3;
+    width: 100%;
+    padding-bottom: 6px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .avatar {
+    font-size: 13px;
+  }
 }
 </style>

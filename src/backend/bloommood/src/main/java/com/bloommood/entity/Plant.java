@@ -27,7 +27,7 @@ public class Plant {
     private PlantStatus status = PlantStatus.NORMAL;
 
     @Column(nullable = false)
-    private Integer stage = 0;
+    private Integer stage = 1;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,7 +41,7 @@ public class Plant {
         this.plantDate = plantDate;
         this.type = type;
         this.status = PlantStatus.NORMAL;
-        this.stage = 0;
+        this.stage = 1;
     }
 
     public Long getPid() {

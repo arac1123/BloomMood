@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page page-bg-main">
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
@@ -87,18 +87,72 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
 // 2. 引入封裝好的 Header
 import Header from '../components/header.vue'; 
 
-const router = useRouter();
 const records = ref([]);
+const actionCounts = ref({ water: 0, sun: 0, fertilize: 0 });
 
-onMounted(() => {
-  const saved = localStorage.getItem('bloom_records');
-  if (saved) {
-    // 取得最近 7 筆紀錄做分析
-    records.value = JSON.parse(saved).slice(-7);
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+const plantTypeToEmoji = (type) => {
+  switch (String(type || '').toUpperCase()) {
+    case 'FLOWER':
+      return '🌸';
+    case 'CACTUS':
+      return '🌵';
+    case 'TREE':
+      return '🌳';
+    default:
+      return '✨';
+  }
+};
+
+const getCurrentYearMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+onMounted(async () => {
+  try {
+    const ym = getCurrentYearMonth();
+    const [plantRes, actionRes] = await Promise.all([
+      fetch(`${apiBaseUrl}/api/plant/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetch(`${apiBaseUrl}/api/action/month?ym=${ym}`, { method: 'GET', credentials: 'include' })
+    ]);
+
+    if (plantRes.ok) {
+      const rows = await plantRes.json();
+      const planted = Array.isArray(rows)
+        ? rows.filter((row) => row?.hasPlant && row?.plant)
+        : [];
+      const recent = planted
+        .map((row) => ({
+          plant: plantTypeToEmoji(row?.plant?.type),
+          plantDate: row?.plant?.plantDate
+        }))
+        .sort((a, b) => String(a?.plantDate || '').localeCompare(String(b?.plantDate || '')))
+        .slice(-7);
+      records.value = recent;
+    }
+
+    if (actionRes.ok) {
+      const actions = await actionRes.json();
+      const counts = { water: 0, sun: 0, fertilize: 0 };
+      if (Array.isArray(actions)) {
+        actions.forEach((action) => {
+          const type = String(action?.type || '').toUpperCase();
+          if (type === 'WATER') counts.water += 1;
+          if (type === 'SUN') counts.sun += 1;
+          if (type === 'FERTILIZE') counts.fertilize += 1;
+        });
+      }
+      actionCounts.value = counts;
+    }
+  } catch (error) {
+    console.error('取得統計資料失敗:', error);
   }
 });
 
@@ -141,20 +195,13 @@ const fillPath = computed(() => {
   return linePath.value + ` L ${points.value[points.value.length - 1].x} 300 L 0 300 Z`;
 });
 
-const statsTotal = computed(() => {
-  return records.value.reduce((acc, r) => {
-    acc.water += r.stats?.water || 0;
-    acc.sun += r.stats?.sun || 0;
-    acc.fertilize += r.stats?.fertilize || 0;
-    return acc;
-  }, { water: 0, sun: 0, fertilize: 0 });
+const totalInteractions = computed(() => {
+  return actionCounts.value.water + actionCounts.value.sun + actionCounts.value.fertilize;
 });
-
-const totalInteractions = computed(() => statsTotal.value.water + statsTotal.value.sun + statsTotal.value.fertilize);
 
 const getPercentage = (type) => {
   if (totalInteractions.value === 0) return 0;
-  return (statsTotal.value[type] / totalInteractions.value) * 100;
+  return (actionCounts.value[type] / totalInteractions.value) * 100;
 };
 
 const currentRhythmEmoji = computed(() => {
@@ -166,16 +213,10 @@ const currentRhythmEmoji = computed(() => {
 </script>
 
 <style scoped>
-* { box-sizing: border-box; }
-
-.page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
-
 .content { flex: 1; min-height: 0; padding: 20px 40px; }
 .container { width: 100%; max-width: 1000px; height: 100%; display: flex; flex-direction: column; gap: 20px; margin: 0 auto; }
 
 .glass-card { 
-  background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(15px); 
-  border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); 
   padding: 20px;
 }
 
@@ -215,12 +256,61 @@ const currentRhythmEmoji = computed(() => {
 
 .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #889a88; font-size: 14px; }
 
-/* 裝飾元件 */
-.deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
-.leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
-.leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
+@media (max-width: 1024px) {
+  .content {
+    padding: 16px 20px;
+  }
+
+  .container {
+    max-width: 920px;
+  }
+
+  .chart-container {
+    min-height: 250px;
+  }
+}
 
 @media (max-width: 768px) {
+  .content {
+    padding: 12px;
+  }
+
+  .container {
+    gap: 14px;
+  }
+
+  .glass-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .card-header-row {
+    margin-bottom: 10px;
+  }
+
+  .pulse-indicator {
+    font-size: 11px;
+  }
+
   .summary-card { flex-direction: column; gap: 15px; }
+
+  .chart-container {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-item .value {
+    font-size: 20px;
+  }
+
+  .card-title {
+    font-size: 14px;
+  }
+
+  .bar-label,
+  .chart-footer {
+    font-size: 11px;
+  }
 }
 </style>

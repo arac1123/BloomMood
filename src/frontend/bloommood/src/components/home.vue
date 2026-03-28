@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page page-bg-main">
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
@@ -67,19 +67,64 @@ const plantsCount = ref(0);
 const lastMood = ref('尚未紀錄');
 const todayDate = ref(new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }));
 
-onMounted(() => {
-  // 讀取使用者名稱
-  const savedName = localStorage.getItem('user_name');
-  if (savedName) userName.value = savedName;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
-  // 讀取花園數據
-  const savedRecords = localStorage.getItem('bloom_records');
-  if (savedRecords) {
-    const records = JSON.parse(savedRecords);
-    plantsCount.value = records.length;
-    if (records.length > 0) {
-      lastMood.value = records[records.length - 1].plant;
+const plantTypeToEmoji = (type) => {
+  switch (String(type || '').toUpperCase()) {
+    case 'FLOWER':
+      return '🌸';
+    case 'CACTUS':
+      return '🌵';
+    case 'TREE':
+      return '🌳';
+    default:
+      return '✨';
+  }
+};
+
+const getCurrentYearMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+onMounted(async () => {
+  try {
+    const meRes = await fetch(`${apiBaseUrl}/api/me/getInfo`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      userName.value = meData?.uname || userName.value;
     }
+  } catch (error) {
+    console.error('取得使用者資訊失敗:', error);
+  }
+
+  try {
+    const ym = getCurrentYearMonth();
+    const res = await fetch(`${apiBaseUrl}/api/plant/month?ym=${ym}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    const planted = Array.isArray(rows)
+      ? rows.filter((row) => row?.hasPlant && row?.plant)
+      : [];
+    plantsCount.value = planted.length;
+
+    if (planted.length > 0) {
+      const latest = planted
+        .map((row) => row.plant)
+        .sort((a, b) => String(a?.plantDate || '').localeCompare(String(b?.plantDate || '')))
+        .at(-1);
+      lastMood.value = plantTypeToEmoji(latest?.type);
+    }
+  } catch (error) {
+    console.error('取得花園資料失敗:', error);
   }
 });
 
@@ -88,9 +133,6 @@ onMounted(() => {
 
 <style scoped>
 /* 樣式部分：已移除 Navbar 相關 CSS，僅保留頁面專屬樣式 */
-* { box-sizing: border-box; }
-.page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
-
 .content { flex: 1; display: flex; justify-content: center; align-items: center; padding: 0 40px; }
 .container { width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 50px; }
 
@@ -121,7 +163,76 @@ onMounted(() => {
 .svg-wave { width: 100%; height: 60px; }
 .click-hint { font-size: 12px; color: #889988; text-align: right; margin-top: 10px; }
 
-.deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
-.leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
-.leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
+@media (max-width: 1024px) {
+  .content {
+    padding: 20px;
+    align-items: flex-start;
+  }
+
+  .container {
+    gap: 32px;
+  }
+
+  .welcome-title {
+    font-size: 36px;
+  }
+
+  .quick-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+
+  .container {
+    gap: 24px;
+  }
+
+  .welcome-title {
+    font-size: 30px;
+  }
+
+  .welcome-subtitle {
+    font-size: 16px;
+  }
+
+  .start-btn {
+    width: 100%;
+    max-width: 320px;
+    font-size: 16px;
+    padding: 14px 24px;
+  }
+
+  .quick-overview {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .glass-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-title {
+    font-size: 26px;
+  }
+
+  .date-tag,
+  .click-hint {
+    font-size: 11px;
+  }
+
+  .quote-text {
+    font-size: 15px;
+  }
+
+  .status-item .num {
+    font-size: 24px;
+  }
+}
+
 </style>

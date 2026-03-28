@@ -88,7 +88,7 @@ public class SecurityConfig {
                         .map(String::trim)
                         .toList()
         );
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
         // Allow Content-Type + Authorization (kept for backward compatibility)
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));

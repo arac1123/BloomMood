@@ -1,7 +1,286 @@
-html, body, #app {
+html,
+body,
+#app {
   margin: 0;
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  background-color: #E5E5E5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+}
+
+.page-bg-auth {
+  background: linear-gradient(135deg, #d4e0d4 0%, #fefae0 100%);
+}
+
+.page-bg-main {
+  background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%);
+}
+
+.deco {
+  position: absolute;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.leaf-left {
+  bottom: -30px;
+  left: -30px;
+  transform: rotate(15deg);
+}
+
+.leaf-right {
+  top: 20%;
+  right: -50px;
+  transform: rotate(-20deg);
+}
+
+.page-bg-auth .deco {
+  font-size: 150px;
+  filter: blur(1px);
+}
+
+.page-bg-auth .leaf-right {
+  font-size: 120px;
+}
+
+.page-bg-main .deco {
+  font-size: 150px;
+  opacity: 0.06;
+}
+
+.page-bg-main .leaf-right {
+  top: 10%;
+  right: -40px;
+  transform: rotate(-10deg);
+}
+
+.page-bg-main .glass-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.page-bg-auth .navbar {
+  display: flex;
+  align-items: center;
+  padding: 16px 40px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 10;
+}
+
+.page-bg-auth .logo {
+  font-weight: 700;
+  font-size: 22px;
+  color: #4a5d4a;
+  letter-spacing: 1px;
+}
+
+.page-bg-auth .content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.page-bg-auth .card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 30px;
+  padding: 50px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+  z-index: 5;
+}
+
+.page-bg-auth .title {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: bold;
+  color: #222;
+}
+
+.page-bg-auth .subtitle {
+  margin-bottom: 35px;
+  color: #6a7a6a;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.page-bg-auth .form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.page-bg-auth .form input {
+  width: 100%;
+  padding: 15px 18px;
+  border-radius: 15px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.page-bg-auth .form input:focus {
+  background: #ffffff;
+  border-color: #8fb98f;
+  box-shadow: 0 0 15px rgba(143, 185, 143, 0.25);
+  transform: translateY(-1px);
+}
+
+.page-bg-auth .btn {
+  width: 100%;
+  padding: 16px;
+  background: #5d7a5d;
+  color: #ffffff;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(93, 122, 93, 0.2);
+  transition: all 0.3s ease;
+}
+
+.page-bg-auth .btn:hover:not(:disabled) {
+  background: #4a634a;
+  transform: translateY(-2px);
+}
+
+.page-bg-auth .auth-switch {
+  margin-top: 25px;
+  text-align: center;
+  font-size: 14px;
+  color: #556b55;
+}
+
+.page-bg-auth .link-text {
+  color: #5d7a5d;
+  font-weight: bold;
+  text-decoration: none;
+  margin-left: 5px;
+  transition: border-bottom 0.3s;
+}
+
+.page-bg-auth .link-text:hover {
+  border-bottom: 1px solid #5d7a5d;
+}
+
+@media (max-width: 1024px) {
+  .page-bg-auth .card {
+    padding: 40px;
+  }
+
+  .page-bg-main .deco {
+    font-size: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-bg-auth .navbar {
+    padding: 14px 20px;
+  }
+
+  .page-bg-auth .logo {
+    font-size: 20px;
+  }
+
+  .page-bg-auth .content {
+    padding: 24px 16px;
+  }
+
+  .page-bg-auth .card {
+    max-width: 100%;
+    padding: 28px 22px;
+    border-radius: 22px;
+  }
+
+  .page-bg-auth .title {
+    font-size: 22px;
+  }
+
+  .page-bg-auth .subtitle {
+    font-size: 16px;
+    margin-bottom: 24px;
+  }
+
+  .page-bg-auth .btn,
+  .page-bg-auth .form input {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .page-bg-auth .deco {
+    font-size: 100px;
+  }
+
+  .page-bg-auth .leaf-right {
+    font-size: 90px;
+    right: -30px;
+  }
+
+  .page-bg-main .deco {
+    font-size: 100px;
+  }
+
+  .page-bg-main .leaf-left {
+    left: -40px;
+  }
+
+  .page-bg-main .leaf-right {
+    right: -35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-bg-auth .navbar {
+    padding: 12px 14px;
+  }
+
+  .page-bg-auth .logo {
+    font-size: 18px;
+  }
+
+  .page-bg-auth .card {
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+
+  .page-bg-auth .title {
+    font-size: 20px;
+  }
+
+  .page-bg-auth .subtitle {
+    font-size: 15px;
+  }
+
+  .page-bg-auth .deco,
+  .page-bg-main .deco {
+    font-size: 80px;
+  }
 }

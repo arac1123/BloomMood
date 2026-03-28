@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page page-bg-main">
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
@@ -44,7 +44,7 @@
                           <input type="text" v-model="tempName" />
                         </div>
                         <div class="form-actions">
-                          <button class="primary-btn sm" @click="updateName">確認修改</button>
+                          <button class="primary-btn sm" @click="updateName" :disabled="isSavingName">確認修改</button>
                           <button class="ghost-btn sm" @click="isEditingName = false">取消</button>
                         </div>
                       </div>
@@ -70,7 +70,7 @@
                         <div class="form-group"><label>舊密碼</label><input type="password" v-model="passForm.old" /></div>
                         <div class="form-group"><label>新密碼</label><input type="password" v-model="passForm.new" /></div>
                         <div class="form-actions">
-                          <button class="primary-btn sm" @click="updatePass">儲存新密碼</button>
+                          <button class="primary-btn sm" @click="updatePass" :disabled="isSavingPassword">儲存新密碼</button>
                           <button class="ghost-btn sm" @click="isEditingPassword = false">取消</button>
                         </div>
                       </div>
@@ -101,6 +101,10 @@ const activeTab = ref('account');
 const isEditingName = ref(false);
 const isEditingPassword = ref(false);
 const tempName = ref('');
+const isSavingName = ref(false);
+const isSavingPassword = ref(false);
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const userForm = reactive({ name: '用戶', email: 'user@bloommood.com' });
 const passForm = reactive({ old: '', new: '' });
@@ -109,9 +113,21 @@ const menus = [
   { id: 'privacy', label: '隱私安全', icon: '🔒' }
 ];
 
-onMounted(() => {
-  const savedName = localStorage.getItem('user_name');
-  if (savedName) userForm.name = savedName;
+onMounted(async () => {
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/me/getInfo`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      return;
+    }
+    const data = await res.json();
+    userForm.name = data?.uname || userForm.name;
+    userForm.email = data?.email || userForm.email;
+  } catch (error) {
+    console.error('取得使用者資訊失敗:', error);
+  }
 });
 
 const startEditName = () => { 
@@ -119,17 +135,65 @@ const startEditName = () => {
   isEditingName.value = true; 
 };
 
-const updateName = () => {
-  if (!tempName.value.trim()) return;
-  userForm.name = tempName.value;
-  localStorage.setItem('user_name', tempName.value);
-  isEditingName.value = false;
-  alert('名稱已修改完成！');
+const updateName = async () => {
+  const nextName = tempName.value.trim();
+  if (!nextName) return;
+  if (isSavingName.value) return;
+  isSavingName.value = true;
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/me`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uname: nextName })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.message || '名稱修改失敗');
+      return;
+    }
+    userForm.name = nextName;
+    isEditingName.value = false;
+    alert('名稱已修改完成！');
+  } catch (error) {
+    console.error('更新名稱失敗:', error);
+    alert('名稱修改失敗，請稍後再試。');
+  } finally {
+    isSavingName.value = false;
+  }
 };
 
-const updatePass = () => { 
-  alert('密碼已修改'); 
-  isEditingPassword.value = false; 
+const updatePass = async () => { 
+  const oldPassword = passForm.old.trim();
+  const newPassword = passForm.new.trim();
+  if (!oldPassword || !newPassword) {
+    alert('請輸入舊密碼與新密碼');
+    return;
+  }
+  if (isSavingPassword.value) return;
+  isSavingPassword.value = true;
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/me`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword, newPassword })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.message || '密碼修改失敗');
+      return;
+    }
+    passForm.old = '';
+    passForm.new = '';
+    isEditingPassword.value = false; 
+    alert('密碼已修改'); 
+  } catch (error) {
+    console.error('更新密碼失敗:', error);
+    alert('密碼修改失敗，請稍後再試。');
+  } finally {
+    isSavingPassword.value = false;
+  }
 };
 
 const clearAllData = () => { 
@@ -144,9 +208,6 @@ const clearAllData = () => {
 
 <style scoped>
 /* 移除 Navbar 相關 CSS，保留基礎與設定頁面樣式 */
-* { box-sizing: border-box; }
-.page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif;}
-
 .content { flex: 1; padding: 40px; display: flex; justify-content: center; }
 .container { width: 100%; max-width: 1000px; display: flex; gap: 30px; }
 
@@ -158,7 +219,7 @@ const clearAllData = () => {
 
 /* 詳細設定區樣式 */
 .settings-detail { flex: 7; }
-.glass-card { background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(15px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); padding: 40px; height: 100%; overflow-y: auto; }
+.glass-card { padding: 40px; height: 100%; overflow-y: auto; }
 
 .section-title { font-size: 1.5rem; color: #2d3a2d; margin-bottom: 25px; }
 .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
@@ -198,7 +259,82 @@ const clearAllData = () => {
 .expand-enter-active, .expand-leave-active { transition: all 0.3s ease-out; max-height: 250px; overflow: hidden; }
 .expand-enter-from, .expand-leave-to { max-height: 0; opacity: 0; }
 
-.deco { position: absolute; font-size: 150px; opacity: 0.06; pointer-events: none; }
-.leaf-left { bottom: -30px; left: -30px; transform: rotate(15deg); }
-.leaf-right { top: 10%; right: -40px; transform: rotate(-10deg); }
+@media (max-width: 1024px) {
+  .content {
+    padding: 20px;
+  }
+
+  .container {
+    gap: 16px;
+  }
+
+  .glass-card {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 12px;
+  }
+
+  .container {
+    flex-direction: column;
+  }
+
+  .settings-sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+  }
+
+  .menu-item {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+
+  .settings-detail {
+    min-height: 0;
+  }
+
+  .glass-card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .profile-header {
+    margin-bottom: 20px;
+  }
+
+  .current-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+  }
+
+  .action-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .form-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .form-actions .primary-btn,
+  .form-actions .ghost-btn {
+    width: 100%;
+  }
+}
+
 </style>

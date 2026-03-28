@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page page-bg-main">
     <div class="deco leaf-left">🌱</div>
     <div class="deco leaf-right">🌻</div>
 
@@ -27,8 +27,12 @@
                   <input v-model="userInput" placeholder="寫下現在的心情..." @keyup.enter="sendMessage" />
                   <button class="send-btn" @click="sendMessage">➔</button>
                 </div>
-                <button class="plant-btn" @click="saveDailyRecord" :disabled="chatHistory.length < 2 || hasPlantedToday || isPlanting || isInteracting">
-                  {{ isPlanting ? '🌱 種植中...' : (hasPlantedToday ? '🌟 今天已灌溉' : '✨ 將情緒種入花園') }}
+                <button
+                  class="plant-btn"
+                  @click="saveDailyRecord"
+                  :disabled="chatHistory.length < 2 || hasPlantedToday || isPlanting || isInteracting"
+                >
+                  {{ isPlanting ? '🌱 種植中...' : (hasPlantedToday ? '🌟 今天已經種下情緒囉，明天再來吧' : '✨ 將情緒種入花園') }}
                 </button>
               </div>
             </div>
@@ -37,21 +41,16 @@
           <section class="garden-panel">
             <div class="garden-header">
               <h1 class="garden-main-title">情緒花園</h1>
-              <p class="garden-sub-title">將今天的感受種下，靜待它開花</p>
+              <p class="garden-sub-title">小提示🌟：每日初次互動，植物會悄悄長大喔！</p>
+
             </div>
             <div class="glass-card garden-canvas">
-              <div v-if="isRaining" class="rain-overlay">
-                <div v-for="drop in staticRain" :key="drop.id" class="drop" :style="drop.style"></div>
-              </div>
               <transition name="sun-fade">
                 <div v-if="isShining" class="sun-overlay">
                   <div class="the-sun"><div class="sun-glow"></div><div class="sun-icon">☀️</div></div>
                 </div>
               </transition>
-              <div v-if="isFertilizing" class="fertilize-overlay">
-                <div v-for="s in staticSparkles" :key="s.id" class="sparkle" :style="s.style">✨</div>
-              </div>
-              
+
               <div class="mascot-bubble">
                 {{ isGardenWithered ? '花園太久沒喝水了，快澆點水救救它們吧！' : '每一個心情，都值得被溫柔灌溉。' }}
               </div>
@@ -59,22 +58,29 @@
               <div v-if="apiNotice" class="api-notice">{{ apiNotice }}</div>
 
               <div class="garden-container">
-                <div class="garden-scene" :class="{ 'withered-state': isGardenWithered }" :style="{ backgroundImage: `url(${gardenBackground})` }">
-                  <div v-for="i in TOTAL_SLOTS" :key="i-1" class="plant-spot" :style="getSpotStyle(i-1)">
+                <div
+                  class="garden-scene"
+                  :class="{ 'withered-state': isGardenWithered }"
+                  :style="{ backgroundImage: `url(${gardenBackground})` }"
+                >
+                  <div v-if="isRaining" class="rain-overlay">
+                    <div v-for="drop in staticRain" :key="drop.id" class="drop" :style="drop.style"></div>
+                  </div>
+                  <div v-if="isFertilizing" class="fertilize-overlay">
+                    <div v-for="s in staticSparkles" :key="s.id" class="sparkle" :style="s.style">✨</div>
+                  </div>
+                  <div v-for="i in TOTAL_SLOTS" :key="i - 1" class="plant-spot" :style="getSpotStyle(i - 1)">
                     <div class="spot-marker"></div>
                     <transition name="grow" mode="out-in">
                       <div
-                        v-if="getPlantInSlot(i-1)"
+                        v-if="getPlantInSlot(i - 1)"
                         class="plant-item"
-                        :class="[`stage-${getPlantInSlot(i-1).stage}`, { 'is-magic': getPlantInSlot(i-1).isMagic }]"
+                        :class="[`stage-${getPlantInSlot(i - 1).stage}`, { 'is-magic': getPlantInSlot(i - 1).isMagic }]"
                       >
-                        <div v-if="getPlantInSlot(i-1).isMagic" class="magic-burst"></div>
+                        <div v-if="getPlantInSlot(i - 1).isMagic" class="magic-burst"></div>
                         <div class="plant-wrapper">
                           <div class="plant-image">
-                            <img 
-                              :src="getPlantImagePath(getPlantInSlot(i-1))" 
-                              :alt="getPlantInSlot(i-1).type"
-                            />
+                            <img :src="getPlantImagePath(getPlantInSlot(i - 1))" :alt="getPlantInSlot(i - 1).type" />
                           </div>
                         </div>
                         <div class="plant-shadow"></div>
@@ -83,7 +89,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div class="garden-actions">
                 <button class="action-btn water" @click="triggerInteraction('WATER')" :disabled="isInteracting || isPlanting">💧 澆水</button>
                 <button class="action-btn sun" @click="triggerInteraction('SUN')" :disabled="isInteracting || isPlanting">☀️ 陽光</button>
@@ -101,7 +107,6 @@
 import { ref, nextTick, onMounted, computed } from 'vue';
 import Header from './header.vue';
 
-// --- 1. 配置定義 ---
 const PLANT_API_BASE_URL = 'http://localhost:3001/api/plant';
 const ACTION_API_BASE_URL = 'http://localhost:3001/api/action';
 
@@ -119,9 +124,12 @@ const plantImageModules = import.meta.glob('../assets/image/*.{png,jpg,jpeg,webp
 const gardenBackground = plantImageModules['../assets/image/garden.png'] || '';
 
 const PLANT_SPOTS = [
-  { x: 18, y: 78 }, { x: 32, y: 76 }, { x: 48, y: 79 }, { x: 63, y: 77 },
-  { x: 79, y: 78 }, { x: 24, y: 64 }, { x: 40, y: 62 }, { x: 57, y: 64 },
-  { x: 73, y: 62 }, { x: 31, y: 50 }, { x: 50, y: 48 }, { x: 69, y: 50 }
+  { x: 22, y: 74 }, { x: 32, y: 74 }, { x: 42, y: 74 }, { x: 52, y: 74 }, { x: 62, y: 74 }, { x: 72, y: 74 },
+  { x: 26, y: 66 }, { x: 36, y: 66 }, { x: 46, y: 66 }, { x: 56, y: 66 }, { x: 66, y: 66 }, { x: 76, y: 66 },
+  { x: 24, y: 58 }, { x: 34, y: 58 }, { x: 44, y: 58 }, { x: 54, y: 58 }, { x: 64, y: 58 }, { x: 74, y: 58 },
+  { x: 28, y: 50 }, { x: 38, y: 50 }, { x: 48, y: 50 }, { x: 58, y: 50 }, { x: 68, y: 50 }, { x: 78, y: 50 },
+  { x: 32, y: 42 }, { x: 44, y: 42 }, { x: 56, y: 42 }, { x: 68, y: 42 },
+  { x: 40, y: 34 }, { x: 52, y: 34 }, { x: 64, y: 34 }
 ];
 
 const emotions = [
@@ -129,53 +137,106 @@ const emotions = [
   { emoji: '😰', label: '焦慮' }, { emoji: '😢', label: '難過' }, { emoji: '✨', label: '開心' }
 ];
 
-// --- 2. 狀態定義 ---
+
 const userInput = ref('');
 const chatScroll = ref(null);
 const chatHistory = ref([{ type: 'system', text: '今天過得如何？跟我分享一點你的心情吧。' }]);
 const plants = ref([]);
-const TOTAL_SLOTS = 12;
+const TOTAL_SLOTS = 31;
 
-const hasPlantedToday = ref(false); 
+const hasPlantedToday = ref(false);
 const isPlanting = ref(false);
 const isInteracting = ref(false);
 const apiNotice = ref('');
+const actionDateKeys = ref(new Set());
+const latestActionDateKey = ref('');
 
-// 天氣與特效狀態
 const isRaining = ref(false);
 const isShining = ref(false);
 const isFertilizing = ref(false);
 let effectTimer = null;
 
-// 計算目前整個花園是否有任何植物處於乾枯狀態
+const getDateKey = (dateObj) => {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateKey = (key) => {
+  if (!key || typeof key !== 'string') return null;
+  const parts = key.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+  const [year, month, day] = parts;
+  return new Date(year, month - 1, day);
+};
+
+const addDaysToDateKey = (key, days) => {
+  const d = parseDateKey(key);
+  if (!d) return key;
+  d.setDate(d.getDate() + days);
+  return getDateKey(d);
+};
+
+const diffDaysByDateKey = (fromKey, toKey) => {
+  const from = parseDateKey(fromKey);
+  const to = parseDateKey(toKey);
+  if (!from || !to) return 0;
+  const ms = to.getTime() - from.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+};
+
+const toDateKeyFromApiTime = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 10);
+};
+
+const getLatestPlantDateKey = () => {
+  return plants.value.reduce((latest, plant) => {
+    const key = plant?.plantDate;
+    if (!key) return latest;
+    return !latest || key > latest ? key : latest;
+  }, '');
+};
+
+const daysSinceLastInteraction = computed(() => {
+  if (!plants.value.length) return null;
+  const baseDateKey = latestActionDateKey.value || getLatestPlantDateKey();
+  if (!baseDateKey) return null;
+  return Math.max(0, diffDaysByDateKey(baseDateKey, getDateKey(new Date())));
+});
+
 const isGardenWithered = computed(() => {
-  return plants.value.some(p => p.status === 'WITHERED');
+  if (!plants.value.length) return false;
+  const days = daysSinceLastInteraction.value;
+  return typeof days === 'number' && days >= 7;
 });
 
 const latestInteractionText = computed(() => {
-  if (!plants.value.length) return '';
-
-  const withDays = plants.value.find(p => typeof p.daysSinceLastInteraction === 'number');
-  if (withDays) {
-    return `距離最近一次互動 ${withDays.daysSinceLastInteraction} 天`;
-  }
-
-  const withTime = plants.value.find(p => !!p.lastInteractionAt);
-  if (withTime) {
-    return `最近一次互動：${withTime.lastInteractionAt}`;
-  }
-
-  return '';
+  const days = daysSinceLastInteraction.value;
+  if (typeof days !== 'number') return '';
+  return `距離最近一次互動 ${days} 天`;
 });
 
-// --- 3. 核心邏輯方法 ---
-const getPlantImagePath = (plant) => {
-  // 確保無論後端回傳大寫還是小寫，都能正確對應到 plantConfigs
-  const plantTypeKey = (plant.type || 'FLOWER').toLowerCase();
-  const prefix = plantConfigs[plantTypeKey]?.prefix || 'sunflower';
-  const fileName = `${prefix}_stage${plant.stage}.png`;
-  
-  return plantImageModules[`../assets/image/${fileName}`] || '';
+const getDisplayStage = (plant) => {
+  const stage = Number(plant?.stage);
+  if (!Number.isFinite(stage)) return 1;
+  return Math.min(4, Math.max(1, stage));
+};
+
+const getCurrentYearMonth = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+const getPreviousYearMonth = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
 };
 
 const readErrorMessage = async (res, fallbackMessage) => {
@@ -189,8 +250,8 @@ const readErrorMessage = async (res, fallbackMessage) => {
 
 const getAvailableSlot = () => {
   const occupiedSlots = plants.value.map(p => p.slotIndex);
-  for(let i = 0; i < TOTAL_SLOTS; i++) {
-    if(!occupiedSlots.includes(i)) return i;
+  for (let i = 0; i < TOTAL_SLOTS; i++) {
+    if (!occupiedSlots.includes(i)) return i;
   }
   return null;
 };
@@ -202,47 +263,78 @@ const getSpotStyle = (index) => {
   return { left: `${spot.x}%`, top: `${spot.y}%`, zIndex: Math.round(spot.y * 10) };
 };
 
-// --- 4. API 呼叫 ---
-
-// 取得當前月份格式 (例如 '2026-03')
-const getCurrentYearMonth = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+const getPlantImagePath = (plant) => {
+  const plantTypeKey = (plant?.type || 'FLOWER').toLowerCase();
+  const prefix = plantConfigs[plantTypeKey]?.prefix || 'sunflower';
+  const fileName = `${prefix}_stage${getDisplayStage(plant)}.png`;
+  return plantImageModules[`../assets/image/${fileName}`] || '';
 };
 
-// API: 取得當月花園資料
+const fetchRecentActions = async () => {
+  const ym = getCurrentYearMonth();
+  const prevYm = getPreviousYearMonth();
+
+  try {
+    const [resCurrent, resPrevious] = await Promise.all([
+      fetch(`${ACTION_API_BASE_URL}/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetch(`${ACTION_API_BASE_URL}/month?ym=${prevYm}`, { method: 'GET', credentials: 'include' })
+    ]);
+
+    const rowsCurrent = resCurrent.ok ? await resCurrent.json() : [];
+    const rowsPrevious = resPrevious.ok ? await resPrevious.json() : [];
+    const allActions = [
+      ...(Array.isArray(rowsPrevious) ? rowsPrevious : []),
+      ...(Array.isArray(rowsCurrent) ? rowsCurrent : [])
+    ];
+
+    const keys = new Set();
+    let latestKey = '';
+
+    allActions.forEach((action) => {
+      const key = toDateKeyFromApiTime(action?.actionTime);
+      if (!key) return;
+      keys.add(key);
+      if (!latestKey || key > latestKey) latestKey = key;
+    });
+
+    actionDateKeys.value = keys;
+    latestActionDateKey.value = latestKey;
+  } catch (error) {
+    console.error('取得互動紀錄失敗:', error);
+    actionDateKeys.value = new Set();
+    latestActionDateKey.value = '';
+  }
+};
+
 const fetchMonthlyGarden = async () => {
   const ym = getCurrentYearMonth();
   try {
-    const res = await fetch(`${PLANT_API_BASE_URL}/month?ym=${ym}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-    if (res.ok) {
-      const monthRows = await res.json();
-      const plantedRows = Array.isArray(monthRows)
-        ? monthRows.filter(row => row?.hasPlant && row?.plant)
-        : [];
+    const [res] = await Promise.all([
+      fetch(`${PLANT_API_BASE_URL}/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetchRecentActions()
+    ]);
 
-      plants.value = plantedRows.slice(0, TOTAL_SLOTS).map((row, index) => {
-        const plant = row.plant || {};
-        return {
-          ...plant,
-          daysSinceLastInteraction: row.daysSinceLastInteraction ?? plant.daysSinceLastInteraction,
-          lastInteractionAt: row.lastInteractionAt ?? plant.lastInteractionAt,
-          slotIndex: Number.isInteger(plant.slotIndex) ? plant.slotIndex : index,
-          isMagic: false
-        };
-      });
-    }
+    if (!res.ok) return;
+
+    const monthRows = await res.json();
+    const plantedRows = Array.isArray(monthRows)
+      ? monthRows.filter(row => row?.hasPlant && row?.plant)
+      : [];
+
+    plants.value = plantedRows.slice(0, TOTAL_SLOTS).map((row, index) => {
+      const plant = row.plant || {};
+      return {
+        ...plant,
+        stage: getDisplayStage(plant),
+        slotIndex: Number.isInteger(plant.slotIndex) ? plant.slotIndex : index,
+        isMagic: false
+      };
+    });
   } catch (error) {
     console.error('取得當月花園失敗:', error);
   }
 };
 
-// API: 檢查今日是否已種植
 const checkTodayPlant = async () => {
   try {
     const res = await fetch(`${PLANT_API_BASE_URL}/today`, {
@@ -258,10 +350,19 @@ const checkTodayPlant = async () => {
   }
 };
 
-// API: 建立今日的植物
+const getLatestPlant = () => {
+  if (!plants.value.length) return null;
+
+  return [...plants.value].sort((a, b) => {
+    const dateDiff = (a.plantDate || '').localeCompare(b.plantDate || '');
+    if (dateDiff !== 0) return dateDiff;
+    return (Number(a.pid) || 0) - (Number(b.pid) || 0);
+  }).at(-1) || null;
+};
+
 const saveDailyRecord = async () => {
   if (hasPlantedToday.value) {
-    alert("今天已經種下情緒囉，明天再來吧！");
+    alert('今天已經種下情緒囉，明天再來吧！');
     return;
   }
 
@@ -272,10 +373,10 @@ const saveDailyRecord = async () => {
   const slot = getAvailableSlot();
   if (slot === null) {
     isPlanting.value = false;
-    return alert("本月花園已經滿了！");
+    alert('本月花園已經滿了！');
+    return;
   }
 
-  // 準備可用的植物類型 (配合後端的全大寫規格)
   const availableTypes = ['FLOWER', 'CACTUS', 'TREE'];
   const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
 
@@ -283,15 +384,13 @@ const saveDailyRecord = async () => {
     const res = await fetch(`${PLANT_API_BASE_URL}/today`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: randomType
-      }),
+      body: JSON.stringify({ type: randomType }),
       credentials: 'include'
     });
 
     if (res.ok) {
       hasPlantedToday.value = true;
-      await fetchMonthlyGarden(); // 重新拉取本月花園資料以更新畫面
+      await fetchMonthlyGarden();
     } else {
       apiNotice.value = await readErrorMessage(res, '種植失敗，請再試一次。');
     }
@@ -303,13 +402,17 @@ const saveDailyRecord = async () => {
   }
 };
 
-// API: 與花園互動 (澆水、陽光、施肥)
 const triggerInteraction = async (actionType) => {
   if (isInteracting.value) return;
   isInteracting.value = true;
   apiNotice.value = '';
 
-  // 1. 觸發前端視覺天氣特效
+  const stageBeforeByPid = new Map(
+    plants.value
+      .filter(p => p && p.pid != null)
+      .map(p => [p.pid, Number(p.stage) || 0])
+  );
+
   if (effectTimer) clearTimeout(effectTimer);
   isRaining.value = isShining.value = isFertilizing.value = false;
 
@@ -317,29 +420,64 @@ const triggerInteraction = async (actionType) => {
   else if (actionType === 'SUN') isShining.value = true;
   else if (actionType === 'FERTILIZE') isFertilizing.value = true;
 
-  effectTimer = setTimeout(() => { 
-    isRaining.value = isShining.value = isFertilizing.value = false; 
+  effectTimer = setTimeout(() => {
+    isRaining.value = isShining.value = isFertilizing.value = false;
   }, 2500);
 
-  // 2. 呼叫後端 API 更新狀態
   try {
-    const res = await fetch(`${ACTION_API_BASE_URL}`, {
+    const latestPlant = getLatestPlant();
+    if (!latestPlant?.pid || !latestPlant?.plantDate) {
+      apiNotice.value = '目前沒有可成長的植物，請先種植。';
+      return;
+    }
+
+    const actionRes = await fetch(`${ACTION_API_BASE_URL}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: actionType }),
       credentials: 'include'
     });
 
-    if (res.ok) {
-      // 互動成功後，重新拉取最新資料 (讓前端顯示植物升級或解除枯萎)
-      await fetchMonthlyGarden();
-      
-      // 給予所有植物短暫的魔法長大特效
-      plants.value.forEach(p => p.isMagic = true);
-      setTimeout(() => plants.value.forEach(p => p.isMagic = false), 1000);
-    } else {
-      apiNotice.value = await readErrorMessage(res, '互動失敗，請稍後再試。');
+    if (!actionRes.ok) {
+      apiNotice.value = await readErrorMessage(actionRes, '互動失敗，動作未記錄。');
+      return;
     }
+
+    const todayKey = getDateKey(new Date());
+    const plantDateKey = String(latestPlant.plantDate || '');
+    const daysSincePlant = Math.max(0, diffDaysByDateKey(plantDateKey, todayKey));
+    const maxStageToday = Math.min(4, 2 + daysSincePlant);
+    const currentStage = Number(latestPlant.stage) || 1;
+    const expectedStage = Math.min(maxStageToday, currentStage + 1);
+
+    if (expectedStage > currentStage) {
+      const patchRes = await fetch(`${PLANT_API_BASE_URL}/${latestPlant.pid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: expectedStage }),
+        credentials: 'include'
+      });
+
+      if (!patchRes.ok) {
+        apiNotice.value = await readErrorMessage(patchRes, '互動成功，但成長更新失敗。');
+      }
+    } else {
+      apiNotice.value = currentStage >= 4
+        ? '植物已達最高階段。'
+        : '今天已完成該階段成長，明天再來互動會繼續長大。';
+    }
+
+    await fetchMonthlyGarden();
+
+    plants.value.forEach((p) => {
+      if (p.pid == null) {
+        p.isMagic = false;
+        return;
+      }
+      const prevStage = stageBeforeByPid.get(p.pid);
+      p.isMagic = prevStage != null ? Number(p.stage) > prevStage : false;
+    });
+    setTimeout(() => plants.value.forEach(p => p.isMagic = false), 1000);
   } catch (error) {
     console.error('互動失敗:', error);
     apiNotice.value = '互動失敗，請檢查網路連線。';
@@ -348,13 +486,11 @@ const triggerInteraction = async (actionType) => {
   }
 };
 
-// --- 5. 生命週期 ---
 onMounted(() => {
-  fetchMonthlyGarden(); // 載入本月花園
-  checkTodayPlant();    // 檢查今天是否已種植
+  fetchMonthlyGarden();
+  checkTodayPlant();
 });
 
-// --- 6. 聊天功能 ---
 const sendMessage = async () => {
   if (!userInput.value.trim()) return;
   chatHistory.value.push({ type: 'user', text: userInput.value });
@@ -362,23 +498,34 @@ const sendMessage = async () => {
   await nextTick();
   chatScroll.value.scrollTop = chatScroll.value.scrollHeight;
   setTimeout(() => {
-    chatHistory.value.push({ type: 'system', text: `謝謝你分享你的心情。` });
-    nextTick(() => chatScroll.value.scrollTop = chatScroll.value.scrollHeight);
+    chatHistory.value.push({ type: 'system', text: '謝謝你分享你的心情。' });
+    nextTick(() => {
+      chatScroll.value.scrollTop = chatScroll.value.scrollHeight;
+    });
   }, 800);
 };
 
-const quickInput = (v) => userInput.value = v;
-const staticRain = Array.from({ length: 30 }, (_, i) => ({ id: i, style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 2 + 's' } }));
-const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 1 + 's' } }));
+const quickInput = (v) => {
+  userInput.value = v;
+};
+
+const staticRain = Array.from({ length: 30 }, (_, i) => ({
+  id: i,
+  style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 2 + 's' }
+}));
+
+const staticSparkles = Array.from({ length: 15 }, (_, i) => ({
+  id: i,
+  style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 1 + 's' }
+}));
 </script>
 
 <style scoped>
 /* --- 基礎佈局 --- */
-.page { height: 100vh; width: 100vw; background: linear-gradient(135deg, #f0f4f0 0%, #fefae0 100%); display: flex; flex-direction: column; overflow: hidden; font-family: 'PingFang TC', sans-serif; }
 .content { flex: 1; padding: 20px 40px; display: flex; justify-content: center; align-items: center; min-height: 0; }
 .container { width: 100%; max-width: 1400px; height: 100%; display: flex; flex-direction: column; }
 .garden-layout { display: flex; gap: 30px; flex: 1; min-height: 0; }
-.glass-card { background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(15px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; padding: 20px; height: 100%; overflow: hidden; }
+.glass-card { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; padding: 20px; height: 100%; overflow: hidden; }
 
 /* --- 聊天面板 --- */
 .mood-panel { flex: 4; }
@@ -401,11 +548,14 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { l
 .api-notice { font-size: 13px; color: #9b2d2d; background: rgba(255, 238, 238, 0.9); border: 1px solid rgba(214, 138, 138, 0.5); border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; text-align: center; }
 
 /* --- 天氣效果 --- */
-.rain-overlay, .sun-overlay, .fertilize-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+.rain-overlay, .sun-overlay, .fertilize-overlay { position: absolute; pointer-events: none; z-index: 10; }
+.rain-overlay { left: 0; right: 0; top: 0; height: 60%; }
+.sun-overlay { inset: 0; }
+.fertilize-overlay { inset: 0; }
 .drop { position: absolute; width: 2px; height: 15px; background: rgba(174, 194, 224, 0.7); top: -20px; animation: rain 0.8s linear infinite; }
 @keyframes rain { to { transform: translateY(800px); } }
-.sun-icon { font-size: 60px; position: absolute; top: 10px; right: 20px; filter: drop-shadow(0 0 20px gold); }
-.sparkle { position: absolute; bottom: 100px; animation: sparkleUp 2s ease-out forwards; }
+.sun-icon { font-size: 80px; position: absolute; top: 50px; right: 50px; filter: drop-shadow(0 0 20px gold); }
+.sparkle { position: absolute; top: 65%; animation: sparkleUp 2s ease-out forwards; }
 @keyframes sparkleUp { from { transform: translateY(0) scale(0); opacity: 1; } to { transform: translateY(-100px) scale(1.5); opacity: 0; } }
 
 /* --- 花園場景 --- */
@@ -430,8 +580,8 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { l
 }
 .plant-spot {
   position: absolute;
-  width: 78px;
-  height: 90px;
+  width: 90px;
+  height: 104px;
   transform: translate(-50%, -100%);
   display: flex;
   justify-content: center;
@@ -455,24 +605,39 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { l
 
 /* --- 植物圖片與動畫 --- */
 .plant-item { position: relative; z-index: 6; }
-.plant-image { width: 65px; height: 65px; display: flex; justify-content: center; align-items: flex-end; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.plant-image { width: 78px; height: 78px; display: flex; justify-content: center; align-items: flex-end; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .plant-image img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
 
-/* 根據階段縮放 */
-.stage-1 .plant-image { transform: scale(0.6); }
-.stage-2 .plant-image { transform: scale(0.8); }
-.stage-3 .plant-image { transform: scale(1.1) translateY(-5px); }
-.stage-4 .plant-image { transform: scale(1.4) translateY(-12px); }
+/* 根據階段定義目標大小與高度 */
+.stage-1 { --target-scale: 0.6; --target-translate-y: 0px; }
+.stage-2 { --target-scale: 0.8; --target-translate-y: 0px; }
+.stage-3 { --target-scale: 1.1; --target-translate-y: -5px; }
+.stage-4 { --target-scale: 1.4; --target-translate-y: -12px; }
 
-.plant-shadow { width: 40px; height: 10px; background: rgba(0,0,0,0.3); border-radius: 50%; margin-top: -5px; }
+.plant-image {
+  transform: scale(var(--target-scale, 1)) translateY(var(--target-translate-y, 0px));
+}
+
 
 /* 魔法成長特效 */
 .is-magic .plant-image { animation: plantGrowSmooth 5s cubic-bezier(0.2, 0.85, 0.25, 1); }
 @keyframes plantGrowSmooth {
-  0% { transform: scale(0.82) translateY(4px); filter: brightness(0.97); }
-  45% { transform: scale(1) translateY(-2px); filter: brightness(1.08); }
-  70% { transform: scale(1) translateY(0); filter: brightness(1.02); }
-  100% { transform: scale(1) translateY(0); filter: brightness(1); }
+  0% {
+    transform: scale(calc(var(--target-scale, 1) * 0.82)) translateY(calc(var(--target-translate-y, 0px) + 4px));
+    filter: brightness(0.97);
+  }
+  45% {
+    transform: scale(calc(var(--target-scale, 1) * 1.03)) translateY(calc(var(--target-translate-y, 0px) - 2px));
+    filter: brightness(1.08);
+  }
+  70% {
+    transform: scale(var(--target-scale, 1)) translateY(var(--target-translate-y, 0px));
+    filter: brightness(1.02);
+  }
+  100% {
+    transform: scale(var(--target-scale, 1)) translateY(var(--target-translate-y, 0px));
+    filter: brightness(1);
+  }
 }
 
 .grow-enter-active,
@@ -494,7 +659,88 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({ id: i, style: { l
 .sun { background: #fffde7; color: #fbc02d; }
 .talk { background: #e8f5e9; color: #2e7d32; }
 
-.deco { position: absolute; font-size: 120px; opacity: 0.05; pointer-events: none; }
-.leaf-left { bottom: -20px; left: -20px; }
-.leaf-right { top: 10%; right: -20px; }
+@media (max-width: 1200px) {
+  .content {
+    padding: 16px 20px;
+  }
+
+  .garden-layout {
+    gap: 18px;
+  }
+
+  .mood-panel {
+    flex: 5;
+  }
+
+  .garden-panel {
+    flex: 7;
+  }
+}
+
+@media (max-width: 900px) {
+  .content {
+    align-items: flex-start;
+  }
+
+  .garden-layout {
+    flex-direction: column;
+  }
+
+  .mood-panel,
+  .garden-panel {
+    flex: unset;
+    width: 100%;
+  }
+
+  .mood-panel {
+    min-height: 320px;
+  }
+
+  .garden-container {
+    padding-bottom: 12px;
+  }
+
+  .garden-scene {
+    max-width: 100%;
+  }
+
+  .garden-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 12px;
+  }
+
+  .glass-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .bubble {
+    font-size: 13px;
+    padding: 9px 12px;
+  }
+
+  .shortcut-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .garden-main-title {
+    font-size: 16px;
+  }
+
+  .sun-icon {
+    font-size: 44px;
+  }
+
+  .action-btn {
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+}
+
 </style>
