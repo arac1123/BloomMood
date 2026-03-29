@@ -4,6 +4,7 @@ import com.bloommood.dto.MonthPlantDayDto;
 import com.bloommood.dto.PlantUpdateRequest;
 import com.bloommood.dto.PlantViewDto;
 import com.bloommood.entity.Plant;
+import com.bloommood.entity.PlantStatus;
 import com.bloommood.entity.PlantType;
 import com.bloommood.entity.User;
 import com.bloommood.repository.PlantRepository;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,10 +31,15 @@ public class PlantService {
         this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Plant getTodayPlant(Long uid) {
         LocalDate today = LocalDate.now();
-        return plantRepository.findByUser_UidAndPlantDate(uid, today).orElse(null);
+        Plant plant = plantRepository.findByUser_UidAndPlantDate(uid, today).orElse(null);
+        if (plant == null) {
+            return null;
+        }
+        refreshWitherStatus(plant, today);
+        return plant;
     }
 
     @Transactional
@@ -67,9 +74,12 @@ public class PlantService {
         return plantRepository.findAllByUser_UidAndPlantDateBetweenOrderByPlantDateAsc(uid, start, end);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<MonthPlantDayDto> getMonthCalendar(Long uid, YearMonth month) {
         List<Plant> planted = getPlantsForMonth(uid, month);
+        LocalDate today = LocalDate.now();
+
+        planted.forEach(p -> refreshWitherStatus(p, today));
 
         Map<LocalDate, Plant> byDate = planted.stream()
                 .collect(Collectors.toMap(Plant::getPlantDate, p -> p));
@@ -83,7 +93,7 @@ public class PlantService {
             if (p == null) {
                 out.add(MonthPlantDayDto.empty(date));
             } else {
-                PlantViewDto dto = new PlantViewDto(p.getPid(), p.getPlantDate(), p.getType(), p.getStatus(), p.getStage());
+                PlantViewDto dto = toViewDto(p);
                 out.add(MonthPlantDayDto.of(date, dto));
             }
         }
@@ -130,5 +140,32 @@ public class PlantService {
             throw new IllegalArgumentException("plant not found");
         }
         plantRepository.delete(plant);
+    }
+
+    public PlantViewDto toViewDto(Plant p) {
+        return new PlantViewDto(
+                p.getPid(),
+                p.getPlantDate(),
+                p.getType(),
+                p.getStatus(),
+                p.getStage(),
+                p.getLastInteraction()
+        );
+    }
+
+    private void refreshWitherStatus(Plant plant, LocalDate today) {
+        if (plant.getStatus() == PlantStatus.DEAD) {
+            return;
+        }
+        LocalDate lastInteraction = plant.getLastInteraction();
+        if (lastInteraction == null) {
+            lastInteraction = plant.getPlantDate();
+            plant.setLastInteraction(lastInteraction);
+        }
+
+        long idleDays = ChronoUnit.DAYS.between(lastInteraction, today);
+        if (plant.getStatus() == PlantStatus.NORMAL && idleDays >= 7) {
+            plant.setStatus(PlantStatus.WITHERED);
+        }
     }
 }

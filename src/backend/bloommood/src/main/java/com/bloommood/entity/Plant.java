@@ -29,6 +29,9 @@ public class Plant {
     @Column(nullable = false)
     private Integer stage = 1;
 
+    @Column(name = "last_interaction")
+    private LocalDate lastInteraction;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PlantType type;
@@ -42,6 +45,7 @@ public class Plant {
         this.type = type;
         this.status = PlantStatus.NORMAL;
         this.stage = 1;
+        this.lastInteraction = null;
     }
 
     public Long getPid() {
@@ -83,6 +87,14 @@ public class Plant {
 
     public void setStage(Integer stage) {
         this.stage = stage;
+    }
+
+    public LocalDate getLastInteraction() {
+        return lastInteraction;
+    }
+
+    public void setLastInteraction(LocalDate lastInteraction) {
+        this.lastInteraction = lastInteraction;
     }
 
     public PlantType getType() {

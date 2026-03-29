@@ -12,6 +12,7 @@ public class PlantViewDto {
     private PlantType type;
     private PlantStatus status;
     private Integer stage;
+    private LocalDate lastInteraction;
 
     public PlantViewDto() {
     }
@@ -22,6 +23,11 @@ public class PlantViewDto {
         this.type = type;
         this.status = status;
         this.stage = stage;
+    }
+
+    public PlantViewDto(Long pid, LocalDate plantDate, PlantType type, PlantStatus status, Integer stage, LocalDate lastInteraction) {
+        this(pid, plantDate, type, status, stage);
+        this.lastInteraction = lastInteraction;
     }
 
     public Long getPid() { return pid; }
@@ -38,5 +44,8 @@ public class PlantViewDto {
 
     public Integer getStage() { return stage; }
     public void setStage(Integer stage) { this.stage = stage; }
+
+    public LocalDate getLastInteraction() { return lastInteraction; }
+    public void setLastInteraction(LocalDate lastInteraction) { this.lastInteraction = lastInteraction; }
 }
 

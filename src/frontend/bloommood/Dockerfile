@@ -3,7 +3,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
-
+# 這樣有點太簡陋了
 COPY . .
 
 EXPOSE 3000

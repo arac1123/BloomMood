@@ -18,5 +18,7 @@ public interface PlantRepository extends JpaRepository<Plant, Long> {
 
     Optional<Plant> findByPidAndUser_Uid(Long pid, Long uid);
 
+    Optional<Plant> findTopByUser_UidOrderByPlantDateDescPidDesc(Long uid);
+
     void deleteByPidAndUser_Uid(Long pid, Long uid);
 }

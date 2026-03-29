@@ -34,7 +34,7 @@ public class PlantController {
     }
 
     private PlantViewDto toDto(Plant p) {
-        return new PlantViewDto(p.getPid(), p.getPlantDate(), p.getType(), p.getStatus(), p.getStage());
+        return plantService.toViewDto(p);
     }
 
     /**
