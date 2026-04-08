@@ -106,6 +106,7 @@
 <script setup>
 import { ref, nextTick, onMounted, computed } from 'vue';
 import Header from './header.vue';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const PLANT_API_BASE_URL = 'http://localhost:3001/api/plant';
 const ACTION_API_BASE_URL = 'http://localhost:3001/api/action';
@@ -276,8 +277,8 @@ const fetchRecentActions = async () => {
 
   try {
     const [resCurrent, resPrevious] = await Promise.all([
-      fetch(`${ACTION_API_BASE_URL}/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
-      fetch(`${ACTION_API_BASE_URL}/month?ym=${prevYm}`, { method: 'GET', credentials: 'include' })
+      fetch(`$${apiBaseUrl}/api/plant/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetch(`${apiBaseUrl}/api/action/month?ym=${prevYm}`, { method: 'GET', credentials: 'include' })
     ]);
 
     const rowsCurrent = resCurrent.ok ? await resCurrent.json() : [];
@@ -310,7 +311,7 @@ const fetchMonthlyGarden = async () => {
   const ym = getCurrentYearMonth();
   try {
     const [res] = await Promise.all([
-      fetch(`${PLANT_API_BASE_URL}/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetch(`${apiBaseUrl}/api/plant/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
       fetchRecentActions()
     ]);
 
@@ -337,7 +338,7 @@ const fetchMonthlyGarden = async () => {
 
 const checkTodayPlant = async () => {
   try {
-    const res = await fetch(`${PLANT_API_BASE_URL}/today`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/today`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -381,7 +382,7 @@ const saveDailyRecord = async () => {
   const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
 
   try {
-    const res = await fetch(`${PLANT_API_BASE_URL}/today`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/today`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: randomType }),
@@ -431,7 +432,7 @@ const triggerInteraction = async (actionType) => {
       return;
     }
 
-    const actionRes = await fetch(`${ACTION_API_BASE_URL}`, {
+    const actionRes = await fetch(`${apiBaseUrl}/api/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: actionType }),
@@ -451,7 +452,7 @@ const triggerInteraction = async (actionType) => {
     const expectedStage = Math.min(maxStageToday, currentStage + 1);
 
     if (expectedStage > currentStage) {
-      const patchRes = await fetch(`${PLANT_API_BASE_URL}/${latestPlant.pid}`, {
+      const patchRes = await fetch(`${apiBaseUrl}/api/plant/${latestPlant.pid}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stage: expectedStage }),
