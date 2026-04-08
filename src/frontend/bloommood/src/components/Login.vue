@@ -41,10 +41,9 @@
             class="btn" 
             :class="{ 'btn-loading': isLoading }"
             :disabled="isLoading"
-            @click="handleLogin"
           >
             <span v-if="!isLoading">登入</span>
-            <span v-else>🌿 正在進入花園...</span>
+            <span v-else>正在進入您的情緒花園...</span>
           </button>
         </form>
 
@@ -78,7 +77,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 const isLoading = ref(false);
@@ -90,6 +89,31 @@ const loginData = reactive({
   password: ''
 });
 
+const googleCodeClient = ref(null);
+
+const loadGoogleScript = () => new Promise((resolve, reject) => {
+  if (window.google?.accounts?.oauth2) {
+    resolve();
+    return;
+  }
+
+  const existing = document.querySelector('script[data-google-gis="true"]');
+  if (existing) {
+    existing.addEventListener('load', () => resolve());
+    existing.addEventListener('error', () => reject(new Error('Failed to load Google script')));
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.dataset.googleGis = 'true';
+  script.onload = () => resolve();
+  script.onerror = () => reject(new Error('Failed to load Google script'));
+  document.head.appendChild(script);
+});
+
 // 1. 處理一般登入
 const handleLogin = async () => {
   const { email, password  } = loginData;
@@ -97,6 +121,8 @@ const handleLogin = async () => {
     alert("請填寫完整的電子郵件和密碼");
     return;
   }
+  if (isLoading.value) return;
+  isLoading.value = true;
  try {
   const res = await fetch(`${apiBaseUrl}/api/auth/login`, {
     method: 'POST',
@@ -121,21 +147,86 @@ const handleLogin = async () => {
   }
 
 
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   router.push('/home');
 } catch (e) {
   // 這裡通常是網路斷線、伺服器當掉才會觸發
   console.log("網路或系統錯誤:", e);
   alert("連線伺服器失敗，請稍後再試。");
+} finally {
+  isLoading.value = false;
 }
   
 
 };
 
-// 2. 處理 Google OAuth 登入
-const handleGoogleLogin = () => {
-  const redirectUrl = `${window.location.origin}/home`;
-  window.location.href = `${apiBaseUrl}/api/auth/google?redirect=${encodeURIComponent(redirectUrl)}`;
+// 2. 處理 Google OAuth 登入 (GIS Code Flow)
+const handleGoogleLogin = async () => {
+  try {
+    if (!googleCodeClient.value) {
+      alert('Google 登入初始化失敗，請稍後再試。');
+      return;
+    }
+    if (isLoading.value) return;
+    isLoading.value = true;
+    googleCodeClient.value.requestCode();
+  } catch (error) {
+    console.error('Google 登入錯誤:', error);
+    alert('Google 登入失敗，請稍後再試。');
+    isLoading.value = false;
+  }
 };
+
+const handleGoogleCode = async (response) => {
+  const code = response?.code;
+  if (!code) {
+    alert('Google 登入失敗，未取得授權碼。');
+    isLoading.value = false;
+    return;
+  }
+
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/auth/google`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.message || 'Google 登入失敗');
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    router.push('/home');
+  } catch (error) {
+    console.error('Google 登入錯誤:', error);
+    alert('Google 登入失敗，請稍後再試。');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(async () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    console.warn('VITE_GOOGLE_CLIENT_ID 未設定');
+    return;
+  }
+
+  try {
+    await loadGoogleScript();
+    googleCodeClient.value = window.google.accounts.oauth2.initCodeClient({
+      client_id: clientId,
+      scope: 'openid email profile',
+      callback: handleGoogleCode
+    });
+  } catch (error) {
+    console.error('Google GIS 初始化失敗:', error);
+  }
+});
 </script>
 
 <style scoped>

@@ -107,10 +107,8 @@
 import { ref, nextTick, onMounted, computed } from 'vue';
 import Header from './header.vue';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
-const PLANT_API_BASE_URL = '${apiBaseUrl}/api/plant';
-const ACTION_API_BASE_URL = '${apiBaseUrl}/api/action';
+const PLANT_API_BASE_URL = 'http://localhost:3001/api/plant';
+const ACTION_API_BASE_URL = 'http://localhost:3001/api/action';
 
 const plantConfigs = {
   flower: { name: '花朵', prefix: 'sunflower' },
