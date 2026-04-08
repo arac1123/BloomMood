@@ -77,7 +77,7 @@
             <div class="chat-history-view">
               <h3>心靈對話</h3>
               <div class="chat-container">
-                <div v-for="(msg, i) in currentRecord.chatLog" :key="i" :class="['bubble', msg.type]">
+                <div v-for="(msg, i) in currentChatLog" :key="i" :class="['bubble', msg.type]">
                   {{ msg.text }}
                 </div>
               </div>
@@ -108,6 +108,7 @@ import Header from '../components/header.vue'; // 請確認你的路徑是否正
 
 // --- 狀態管理 ---
 const API_BASE_URL = 'http://localhost:3001'; // 替換成你的後端網址
+const CHAT_LOG_PREFIX = 'bloommood.chatLog.';
 const plantImageModules = import.meta.glob('../assets/image/*.{png,jpg,jpeg,webp,svg}', {
   eager: true,
   import: 'default'
@@ -125,6 +126,53 @@ const selectedDateNum = ref(new Date().getDate()); // 預設選中今天
 const isLoading = ref(false); // 控制按鈕載入狀態
 const isDeleting = ref(false);
 const todayPlant = ref(null);
+
+const getChatStorageKey = (dateStr) => `${CHAT_LOG_PREFIX}${dateStr}`;
+
+const buildDateKey = (year, month, day) => {
+  const y = String(year).padStart(4, '0');
+  const m = String(month).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const normalizeDateKey = (value) => {
+  if (!value) return '';
+  if (Array.isArray(value) && value.length >= 3) {
+    return buildDateKey(value[0], value[1], value[2]);
+  }
+  if (typeof value === 'object' && value.year && value.month && value.day) {
+    return buildDateKey(value.year, value.month, value.day);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.slice(0, 10);
+    const parts = trimmed.split('-');
+    if (parts.length === 3) {
+      return buildDateKey(parts[0], parts[1], parts[2]);
+    }
+  }
+  return '';
+};
+
+const readChatLog = (dateStr) => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(getChatStorageKey(dateStr));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const recordsByDate = computed(() => {
+  const map = new Map();
+  records.value.forEach((record) => {
+    const key = normalizeDateKey(record?.date);
+    if (key) map.set(key, record);
+  });
+  return map;
+});
 
 // --- API 呼叫 ---
 
@@ -285,8 +333,8 @@ const daysInMonth = computed(() => {
 
 // 取得特定日期的資料物件
 const getRecordByDate = (dateNum) => {
-  const dateStr = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
-  return records.value.find(r => r.date === dateStr);
+  const dateStr = buildDateKey(selectedYear.value, selectedMonth.value, dateNum);
+  return recordsByDate.value.get(dateStr);
 };
 
 const getPlantImagePath = (plant) => {
@@ -314,6 +362,12 @@ const currentRecord = computed(() => {
 });
 
 const currentRecordPlantImage = computed(() => getPlantImagePath(currentRecord.value?.plant));
+
+const currentChatLog = computed(() => {
+  if (!selectedDateNum.value) return [];
+  const dateStr = buildDateKey(selectedYear.value, selectedMonth.value, selectedDateNum.value);
+  return readChatLog(dateStr);
+});
 
 // 判斷選中的是不是「現實世界的今天」
 const isSelectedToday = computed(() => {

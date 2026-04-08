@@ -25,10 +25,12 @@ const props = defineProps({
 
 const router = useRouter();
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
 const handleLogout = async () => {
   if (!confirm("確定要登出嗎？")) return;
   try {
-    const res = await fetch("http://localhost:3001/api/auth/logout", {
+    const res = await fetch(`${apiBaseUrl}/api/auth/logout`, {
       method: "POST",
       credentials: "include"
     });

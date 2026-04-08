@@ -52,10 +52,9 @@
               </transition>
 
               <div class="mascot-bubble">
-                {{ isGardenWithered ? '花園太久沒喝水了，快澆點水救救它們吧！' : '每一個心情，都值得被溫柔灌溉。' }}
+                {{ isGardenWithered ? '花園太久沒喝水了🥺，快澆點水救救它們吧！' : '每一個心情，都值得被溫柔灌溉。' }}
               </div>
-              <div v-if="latestInteractionText" class="interaction-hint">{{ latestInteractionText }}</div>
-              <div v-if="apiNotice" class="api-notice">{{ apiNotice }}</div>
+              <div class="api-notice" :class="{ 'is-hidden': !apiNotice }">{{ apiNotice || ' ' }}</div>
 
               <div class="garden-container">
                 <div
@@ -68,6 +67,9 @@
                   </div>
                   <div v-if="isFertilizing" class="fertilize-overlay">
                     <div v-for="s in staticSparkles" :key="s.id" class="sparkle" :style="s.style">✨</div>
+                  </div>
+                  <div v-if="isGardenWithered" class="wither-overlay">
+                    <div v-for="leaf in staticLeaves" :key="leaf.id" class="wither-leaf" :style="leaf.style">🍂</div>
                   </div>
                   <div v-for="i in TOTAL_SLOTS" :key="i - 1" class="plant-spot" :style="getSpotStyle(i - 1)">
                     <div class="spot-marker"></div>
@@ -104,11 +106,12 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue';
+import { ref, nextTick, onMounted, computed, watch } from 'vue';
 import Header from './header.vue';
 
 const PLANT_API_BASE_URL = 'http://localhost:3001/api/plant';
 const ACTION_API_BASE_URL = 'http://localhost:3001/api/action';
+const CHAT_LOG_PREFIX = 'bloommood.chatLog.';
 
 const plantConfigs = {
   flower: { name: '花朵', prefix: 'sunflower' },
@@ -150,6 +153,8 @@ const isInteracting = ref(false);
 const apiNotice = ref('');
 const actionDateKeys = ref(new Set());
 const latestActionDateKey = ref('');
+const latestActionType = ref('');
+const recentActions = ref([]);
 
 const isRaining = ref(false);
 const isShining = ref(false);
@@ -161,6 +166,28 @@ const getDateKey = (dateObj) => {
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
   const day = String(dateObj.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getChatStorageKey = (dateKey) => `${CHAT_LOG_PREFIX}${dateKey}`;
+
+const readChatLog = (dateKey) => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(getChatStorageKey(dateKey));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const writeChatLog = (dateKey, log) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(getChatStorageKey(dateKey), JSON.stringify(log));
+  } catch (e) {
+    // Ignore storage errors (quota, privacy mode, etc.)
+  }
 };
 
 const parseDateKey = (key) => {
@@ -191,9 +218,20 @@ const toDateKeyFromApiTime = (value) => {
   return value.slice(0, 10);
 };
 
+const normalizeActionType = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.toUpperCase();
+};
+
+const getPlantDateKey = (plant) => {
+  const raw = plant?.plantDate;
+  if (!raw) return '';
+  return toDateKeyFromApiTime(String(raw));
+};
+
 const getLatestPlantDateKey = () => {
   return plants.value.reduce((latest, plant) => {
-    const key = plant?.plantDate;
+    const key = getPlantDateKey(plant);
     if (!key) return latest;
     return !latest || key > latest ? key : latest;
   }, '');
@@ -208,15 +246,34 @@ const daysSinceLastInteraction = computed(() => {
 
 const isGardenWithered = computed(() => {
   if (!plants.value.length) return false;
-  const days = daysSinceLastInteraction.value;
-  return typeof days === 'number' && days >= 7;
+  const daysSinceAny = daysSinceLastInteraction.value;
+  if (typeof daysSinceAny !== 'number') return false;
+
+  if (daysSinceAny >= 7) return true;
+
+  if (!recentActions.value.length) return false;
+
+  const ordered = [...recentActions.value].sort((a, b) => (a.actionTime || '').localeCompare(b.actionTime || ''));
+  let witherStartKey = '';
+  let prevKey = ordered[0].dateKey;
+
+  for (let i = 1; i < ordered.length; i++) {
+    const nextKey = ordered[i].dateKey;
+    if (diffDaysByDateKey(prevKey, nextKey) >= 7) {
+      witherStartKey = addDaysToDateKey(prevKey, 7);
+    }
+    prevKey = nextKey;
+  }
+
+  if (!witherStartKey) return false;
+
+  const revivedByWater = ordered.some((action) =>
+    action.type === 'WATER' && action.dateKey >= witherStartKey
+  );
+
+  return !revivedByWater;
 });
 
-const latestInteractionText = computed(() => {
-  const days = daysSinceLastInteraction.value;
-  if (typeof days !== 'number') return '';
-  return `距離最近一次互動 ${days} 天`;
-});
 
 const getDisplayStage = (plant) => {
   const stage = Number(plant?.stage);
@@ -289,20 +346,40 @@ const fetchRecentActions = async () => {
 
     const keys = new Set();
     let latestKey = '';
+    let latestType = '';
+    let latestTime = '';
+    const normalizedActions = [];
 
     allActions.forEach((action) => {
       const key = toDateKeyFromApiTime(action?.actionTime);
       if (!key) return;
+      const type = normalizeActionType(action?.type);
+      const time = typeof action?.actionTime === 'string' ? action.actionTime : '';
+
       keys.add(key);
-      if (!latestKey || key > latestKey) latestKey = key;
+      normalizedActions.push({
+        dateKey: key,
+        actionTime: time,
+        type
+      });
+
+      if (!latestTime || time > latestTime) {
+        latestTime = time;
+        latestKey = key;
+        latestType = type;
+      }
     });
 
     actionDateKeys.value = keys;
     latestActionDateKey.value = latestKey;
+    latestActionType.value = latestType;
+    recentActions.value = normalizedActions;
   } catch (error) {
     console.error('取得互動紀錄失敗:', error);
     actionDateKeys.value = new Set();
     latestActionDateKey.value = '';
+    latestActionType.value = '';
+    recentActions.value = [];
   }
 };
 
@@ -354,7 +431,7 @@ const getLatestPlant = () => {
   if (!plants.value.length) return null;
 
   return [...plants.value].sort((a, b) => {
-    const dateDiff = (a.plantDate || '').localeCompare(b.plantDate || '');
+    const dateDiff = getPlantDateKey(a).localeCompare(getPlantDateKey(b));
     if (dateDiff !== 0) return dateDiff;
     return (Number(a.pid) || 0) - (Number(b.pid) || 0);
   }).at(-1) || null;
@@ -425,8 +502,8 @@ const triggerInteraction = async (actionType) => {
   }, 2500);
 
   try {
-    const latestPlant = getLatestPlant();
-    if (!latestPlant?.pid || !latestPlant?.plantDate) {
+    const growTargets = plants.value.filter(p => p?.pid && p?.plantDate);
+    if (!growTargets.length) {
       apiNotice.value = '目前沒有可成長的植物，請先種植。';
       return;
     }
@@ -444,25 +521,51 @@ const triggerInteraction = async (actionType) => {
     }
 
     const todayKey = getDateKey(new Date());
-    const plantDateKey = String(latestPlant.plantDate || '');
-    const daysSincePlant = Math.max(0, diffDaysByDateKey(plantDateKey, todayKey));
-    const maxStageToday = Math.min(4, 2 + daysSincePlant);
-    const currentStage = Number(latestPlant.stage) || 1;
-    const expectedStage = Math.min(maxStageToday, currentStage + 1);
+    const alreadyInteractedToday = actionDateKeys.value.has(todayKey);
 
-    if (expectedStage > currentStage) {
-      const patchRes = await fetch(`${PLANT_API_BASE_URL}/${latestPlant.pid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: expectedStage }),
-        credentials: 'include'
-      });
+    if (alreadyInteractedToday) {
+      apiNotice.value = '今天已經互動過，植物不會再成長。';
+      await fetchMonthlyGarden();
+      return;
+    }
 
-      if (!patchRes.ok) {
-        apiNotice.value = await readErrorMessage(patchRes, '互動成功，但成長更新失敗。');
+    const growthUpdates = growTargets.map((plant) => {
+      const plantDateKey = getPlantDateKey(plant);
+      const daysSincePlant = Math.max(0, diffDaysByDateKey(plantDateKey, todayKey));
+      const maxStageToday = Math.min(4, 2 + daysSincePlant);
+      const currentStage = Number(plant.stage) || 1;
+      const expectedStage = Math.min(maxStageToday, currentStage + 1);
+
+      return {
+        pid: plant.pid,
+        currentStage,
+        expectedStage
+      };
+    });
+
+    const pendingUpdates = growthUpdates.filter(update => update.expectedStage > update.currentStage);
+
+    actionDateKeys.value = new Set([...actionDateKeys.value, todayKey]);
+
+    if (pendingUpdates.length) {
+      const results = await Promise.all(
+        pendingUpdates.map((update) =>
+          fetch(`${PLANT_API_BASE_URL}/${update.pid}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stage: update.expectedStage }),
+            credentials: 'include'
+          })
+        )
+      );
+
+      const failed = results.some(res => !res.ok);
+      if (failed) {
+        apiNotice.value = '互動成功，但部分植物成長更新失敗。';
       }
     } else {
-      apiNotice.value = currentStage >= 4
+      const allMaxed = growthUpdates.every(update => update.currentStage >= 4);
+      apiNotice.value = allMaxed
         ? '植物已達最高階段。'
         : '今天已完成該階段成長，明天再來互動會繼續長大。';
     }
@@ -489,16 +592,31 @@ const triggerInteraction = async (actionType) => {
 onMounted(() => {
   fetchMonthlyGarden();
   checkTodayPlant();
+  const todayKey = getDateKey(new Date());
+  const savedLog = readChatLog(todayKey);
+  if (savedLog.length) {
+    chatHistory.value = savedLog;
+  }
 });
+
+watch(
+  () => chatHistory.value,
+  (log) => {
+    writeChatLog(getDateKey(new Date()), log);
+  },
+  { deep: true }
+);
 
 const sendMessage = async () => {
   if (!userInput.value.trim()) return;
   chatHistory.value.push({ type: 'user', text: userInput.value });
   userInput.value = '';
+  writeChatLog(getDateKey(new Date()), chatHistory.value);
   await nextTick();
   chatScroll.value.scrollTop = chatScroll.value.scrollHeight;
   setTimeout(() => {
     chatHistory.value.push({ type: 'system', text: '謝謝你分享你的心情。' });
+    writeChatLog(getDateKey(new Date()), chatHistory.value);
     nextTick(() => {
       chatScroll.value.scrollTop = chatScroll.value.scrollHeight;
     });
@@ -517,6 +635,15 @@ const staticRain = Array.from({ length: 30 }, (_, i) => ({
 const staticSparkles = Array.from({ length: 15 }, (_, i) => ({
   id: i,
   style: { left: Math.random() * 100 + '%', animationDelay: Math.random() * 1 + 's' }
+}));
+
+const staticLeaves = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  style: {
+    left: Math.random() * 100 + '%',
+    animationDelay: Math.random() * 2.5 + 's',
+    animationDuration: 2.8 + Math.random() * 2.2 + 's'
+  }
 }));
 </script>
 
@@ -542,10 +669,16 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({
 
 /* --- 花園畫布 --- */
 .garden-panel { flex: 7; display: flex; flex-direction: column; }
-.garden-canvas { position: relative; background: rgba(255, 255, 255, 0.3); overflow: visible; }
+.garden-canvas {
+  position: relative;
+  background: rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  min-height: clamp(520px, 60vh, 680px);
+}
 .garden-main-title { font-size: 18px; color: #3e4e3e; margin: 0; }
 .interaction-hint { font-size: 12px; color: #607360; margin: 8px 0 4px; text-align: center; }
-.api-notice { font-size: 13px; color: #9b2d2d; background: rgba(255, 238, 238, 0.9); border: 1px solid rgba(214, 138, 138, 0.5); border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; text-align: center; }
+.api-notice { font-size: 13px; color: #9b2d2d; background: rgba(255, 238, 238, 0.9); border: 1px solid rgba(214, 138, 138, 0.5); border-radius: 10px; padding: 8px 10px; margin: 6px 0 8px; text-align: center; min-height: 36px; }
+.api-notice.is-hidden { visibility: hidden; }
 
 /* --- 天氣效果 --- */
 .rain-overlay, .sun-overlay, .fertilize-overlay { position: absolute; pointer-events: none; z-index: 10; }
@@ -599,8 +732,41 @@ const staticSparkles = Array.from({ length: 15 }, (_, i) => ({
 
 /* 乾枯狀態特效 */
 .withered-state {
-  filter: sepia(0.6) grayscale(0.5) brightness(0.8);
+  filter: sepia(0.85) grayscale(0.85) brightness(0.7) saturate(0.6);
   transition: filter 1.5s ease-in-out;
+}
+
+.withered-state .plant-image img {
+  filter: grayscale(1) brightness(0.75) contrast(0.9);
+}
+
+.wither-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.wither-leaf {
+  position: absolute;
+  top: -20px;
+  font-size: 18px;
+  opacity: 0.75;
+  animation: leafFall linear infinite;
+}
+
+@keyframes leafFall {
+  0% {
+    transform: translateY(-10px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(520px) translateX(40px) rotate(140deg);
+    opacity: 0;
+  }
 }
 
 /* --- 植物圖片與動畫 --- */
