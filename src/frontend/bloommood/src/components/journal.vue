@@ -107,7 +107,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import Header from '../components/header.vue'; // 請確認你的路徑是否正確
 
 // --- 狀態管理 ---
-const API_BASE_URL = 'http://localhost:3001'; // 替換成你的後端網址
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 const CHAT_LOG_PREFIX = 'bloommood.chatLog.';
 const plantImageModules = import.meta.glob('../assets/image/*.{png,jpg,jpeg,webp,svg}', {
   eager: true,
@@ -179,7 +179,7 @@ const recordsByDate = computed(() => {
 // 1. 查今天有沒有種 (GET /api/plant/today)
 const fetchTodayPlant = async () => {
   try {
-    const res = await fetch(`http://localhost:3001/api/plant/today`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/today`, {
       method: "GET",
       credentials: "include"
     });
@@ -197,7 +197,7 @@ const fetchTodayPlant = async () => {
 const plantToday = async () => {
   isLoading.value = true;
   try {
-    const res = await fetch(`http://localhost:3001/api/plant/today`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/today`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -223,7 +223,7 @@ const plantToday = async () => {
 const fetchMonthData = async () => {
   try {
     const ym = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}`;
-    const res = await fetch(`http://localhost:3001/api/plant/month?ym=${ym}`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/month?ym=${ym}`, {
       method: "GET",
       credentials: "include"
     });
@@ -247,7 +247,7 @@ const updatePlant = async (pid) => {
       type: "TREE"
     };
 
-    const res = await fetch(`http://localhost:3001/api/plant/${pid}`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/${pid}`, {
       method: "PATCH",
       credentials: "include",
       headers: {
@@ -271,7 +271,7 @@ const updatePlant = async (pid) => {
 // 5. 刪除植物資料 (DELETE /api/plant/{pid})
 const deletePlant = async (pid) => {
   try {
-    const res = await fetch(`http://localhost:3001/api/plant/${pid}`, {
+    const res = await fetch(`${apiBaseUrl}/api/plant/${pid}`, {
       method: "DELETE",
       credentials: "include"
     });

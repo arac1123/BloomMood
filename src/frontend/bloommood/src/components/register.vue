@@ -81,7 +81,6 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 const isLoading = ref(false);
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
