@@ -81,6 +81,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 const isLoading = ref(false);
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const formData = reactive({
   email: '',
@@ -98,7 +99,7 @@ const handleRegister = async () => {
     return;
   } 
   isLoading.value = true;
-  const res = await fetch(`http://localhost:3001/api/auth/register`, {
+  const res = await fetch(`${apiBaseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

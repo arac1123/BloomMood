@@ -107,7 +107,8 @@ import { ref, onMounted, computed, watch } from 'vue';
 import Header from '../components/header.vue'; // 請確認你的路徑是否正確
 
 // --- 狀態管理 ---
-const API_BASE_URL = 'http://localhost:3001'; // 替換成你的後端網址
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
 const plantImageModules = import.meta.glob('../assets/image/*.{png,jpg,jpeg,webp,svg}', {
   eager: true,
   import: 'default'

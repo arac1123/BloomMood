@@ -32,7 +32,7 @@ public class SecurityConfig {
     @Value("${app.jwt.expiration-ms:86400000}")
     private long jwtExpirationMs;
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    @Value("${app.cors.allowed-origins:http://32.236.46.194:3000,http://localhost:5173,http://localhost:3000}")
     private String corsAllowedOrigins;
 
     @Value("${app.jwt.cookie.name:accessToken}")
@@ -65,9 +65,8 @@ public class SecurityConfig {
                 // ✅ 放行註冊/登入，其他都要登入
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                // 記得關
-                                "/api/debug/**"
+                                "/api/auth/**"
+
                                 ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -90,8 +89,8 @@ public class SecurityConfig {
         );
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // Allow Content-Type + Authorization (kept for backward compatibility)
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // Allow all request headers so preflight checks pass across browsers/frameworks
+        config.setAllowedHeaders(List.of("*"));
 
         // ✅ must be true for cookies
         config.setAllowCredentials(true);

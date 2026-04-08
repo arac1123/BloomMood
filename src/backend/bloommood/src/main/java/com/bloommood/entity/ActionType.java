@@ -5,4 +5,3 @@ public enum ActionType {
     FERTILIZE,
     SUN
 }
-
