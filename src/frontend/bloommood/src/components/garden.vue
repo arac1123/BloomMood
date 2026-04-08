@@ -277,7 +277,7 @@ const fetchRecentActions = async () => {
 
   try {
     const [resCurrent, resPrevious] = await Promise.all([
-      fetch(`$${apiBaseUrl}/api/plant/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
+      fetch(`${apiBaseUrl}/api/plant/month?ym=${ym}`, { method: 'GET', credentials: 'include' }),
       fetch(`${apiBaseUrl}/api/action/month?ym=${prevYm}`, { method: 'GET', credentials: 'include' })
     ]);
 
