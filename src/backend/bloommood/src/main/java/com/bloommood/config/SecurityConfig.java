@@ -65,9 +65,8 @@ public class SecurityConfig {
                 // ✅ 放行註冊/登入，其他都要登入
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                // 記得關
-                                "/api/debug/**"
+                                "/api/auth/**"
+
                                 ).permitAll()
                         .anyRequest().authenticated()
                 )

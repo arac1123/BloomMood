@@ -80,7 +80,6 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-
 const router = useRouter();
 const isLoading = ref(false);
 
@@ -99,7 +98,7 @@ const handleLogin = async () => {
     return;
   }
  try {
-  const res = await fetch(`http://localhost:3001/api/auth/login`, {
+  const res = await fetch(`${apiBaseUrl}/api/auth/login`, {
     method: 'POST',
     credentials: 'include', 
     headers: { 'Content-Type': 'application/json' },
