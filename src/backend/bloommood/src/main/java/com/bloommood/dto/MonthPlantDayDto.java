@@ -6,7 +6,7 @@ public class MonthPlantDayDto {
 
     private LocalDate date;
     private boolean hasPlant;
-    private PlantViewDto plant;
+    public PlantViewDto plant;
 
     public MonthPlantDayDto() {
     }
