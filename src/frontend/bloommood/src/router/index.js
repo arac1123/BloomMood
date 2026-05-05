@@ -6,6 +6,8 @@ import garden from '../components/garden.vue';
 import journal from '../components/journal.vue';
 import statistics from '../components/statistics.vue';
 import setting from '../components/setting.vue';
+import test from '../components/test.vue';
+import header from '../components/header.vue';
 
 const routes = [
   { path: '/', name: 'Login', component: Login }, // 💡 確保這裡 path 是 /
@@ -14,7 +16,9 @@ const routes = [
   { path: '/garden', name: 'Garden', component: garden },
   { path: '/journal', name: 'Journal', component: journal   },
   { path: '/statistics', name: 'Statistics', component: statistics },
-  {path: '/setting', name: 'Setting', component: setting }
+  {path: '/setting', name: 'Setting', component: setting },
+  {path: '/test', name: 'Test', component: test },
+  {path: '/header', name: 'Header', component: header }
 ];
 
 const router = createRouter({
